@@ -42,6 +42,10 @@ export const api = {
   getModels: () =>
     request<import('../types').Model[]>('GET', '/models'),
 
+  // Pocs
+  getPocs: () =>
+    request<import('../types').Poc[]>('GET', '/pocs'),
+
   // Sessions
   startSession: (poc_id: number, model_id: number, system_prompt: string) =>
     request<import('../types').Session>(
