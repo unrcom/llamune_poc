@@ -56,15 +56,17 @@ export function LogDetailPage() {
     setSaving(true)
     setError('')
     try {
-      const updated = await api.updateLog(Number(id), {
+      await api.updateLog(Number(id), {
         evaluation: Number(evaluation),
         reason: reason || undefined,
         correct_answer: correctAnswer || undefined,
         priority: priority ? Number(priority) : undefined,
       })
+      // 保存後に最新データを取得し直す
+      const updated = await api.getLog(Number(id))
       setLog(updated)
       setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      setTimeout(() => navigate('/logs'), 1500)
     } catch (e) {
       setError(e instanceof Error ? e.message : '保存に失敗しました')
     } finally {
@@ -86,7 +88,7 @@ export function LogDetailPage() {
 
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-sm text-muted-foreground">
-          セッション #{log.session_id} · {new Date(log.created_at).toLocaleString('ja-JP')}
+          セッション #{log.session_id} · {new Date(log.timestamp).toLocaleString('ja-JP')}
         </span>
         <Badge variant="outline">{STATUS_LABELS[log.status]}</Badge>
         {log.evaluation && (

@@ -27,12 +27,32 @@ export function ChatPage() {
   const navigate = useNavigate()
   const [question, setQuestion] = useState('')
   const [logs, setLogs] = useState<Log[]>([])
+  const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [ending, setEnding] = useState(false)
   const [error, setError] = useState('')
   const [evalForms, setEvalForms] = useState<Record<number, EvalFormState>>({})
   const [savingEval, setSavingEval] = useState<Record<number, boolean>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  // ページロード時にセッションのログを取得
+  useEffect(() => {
+    async function fetchSessionLogs() {
+      if (!sessionId) return
+      try {
+        const allLogs = await api.getLogs()
+        const sessionLogs = allLogs.filter(
+          (log) => log.session_id === Number(sessionId)
+        )
+        setLogs(sessionLogs)
+      } catch (e) {
+        // ログ取得失敗は無視して空のまま開始
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchSessionLogs()
+  }, [sessionId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -54,7 +74,7 @@ export function ChatPage() {
         correct_answer: null,
         priority: null,
         status: 1,
-        created_at: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
       }
       setLogs((prev) => [...prev, newLog])
       setQuestion('')
@@ -110,6 +130,10 @@ export function ChatPage() {
     }
   }
 
+  if (loading) {
+    return <p className="text-muted-foreground">読み込み中...</p>
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -138,7 +162,7 @@ export function ChatPage() {
                 {log.answer}
               </div>
             </div>
-            {log.evaluation && (
+            {log.evaluation ? (
               <div className="flex items-center gap-2 pl-1">
                 <Badge variant={EVALUATION_VARIANTS[log.evaluation]}>
                   {EVALUATION_LABELS[log.evaluation]}
@@ -147,8 +171,7 @@ export function ChatPage() {
                   <Badge variant="outline">優先度: {PRIORITY_LABELS[log.priority]}</Badge>
                 )}
               </div>
-            )}
-            {!log.evaluation && (
+            ) : (
               <Card className="border-dashed">
                 <CardHeader className="pb-2 pt-3 px-4">
                   <CardTitle className="text-sm">回答を評価する</CardTitle>

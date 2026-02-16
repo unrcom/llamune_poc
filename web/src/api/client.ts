@@ -73,5 +73,5 @@ export const api = {
       correct_answer?: string
       priority?: number
     }
-  ) => request<import('../types').Log>('PUT', `/logs/${id}`, data),
+  ) => request<{ log_id: number; updated_at: string }>('PUT', `/logs/${id}`, data),
 }

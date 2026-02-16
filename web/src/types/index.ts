@@ -40,12 +40,13 @@ export interface Log {
   session_id: number
   question: string
   answer: string
+  timestamp: string
   evaluation: number | null
   reason: string | null
   correct_answer: string | null
   priority: number | null
   status: number
-  created_at: string
+  memo: string | null
 }
 
 export type Evaluation = 1 | 2 | 3

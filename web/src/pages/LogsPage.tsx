@@ -56,7 +56,7 @@ export function LogsPage() {
               <CardContent className="px-4 py-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-muted-foreground">
-                    #{log.id} · セッション #{log.session_id} · {new Date(log.created_at).toLocaleString('ja-JP')}
+                    #{log.id} · セッション #{log.session_id} · {new Date(log.timestamp).toLocaleString('ja-JP')}
                   </span>
                   <div className="flex items-center gap-1 shrink-0">
                     {log.evaluation ? (
