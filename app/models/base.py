@@ -32,7 +32,7 @@ class Model(Base):
     __tablename__ = "models"
     id = Column(Integer, primary_key=True)
     model_name = Column(String(100), nullable=False)
-    version = Column(Integer, nullable=False, default=1)
+    version = Column(Integer, nullable=False, server_default=sa.text("1"), default=1)
     base_model = Column(String(100))
     trained_at = Column(TIMESTAMP)
     description = Column(Text)
