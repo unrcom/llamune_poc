@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.routes import users, models, sessions, chat, logs, pocs
+from app.api.routes import users, models, sessions, chat, logs
 
 app = FastAPI(title="llamune_poc API", version="1.0.0")
 
@@ -8,7 +8,6 @@ app.include_router(models.router)
 app.include_router(sessions.router)
 app.include_router(chat.router)
 app.include_router(logs.router)
-app.include_router(pocs.router)
 
 @app.get("/health")
 def health_check():
