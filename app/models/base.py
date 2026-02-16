@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text, SmallInteger, TIMESTAMP
+import sqlalchemy as sa
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
 from sqlalchemy import ForeignKey
