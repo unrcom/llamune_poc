@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.base import Poc, User
-from app.schemas.poc import PocResponse, PocUpdate
+from app.schemas.poc import PocCreate, PocUpdate, PocResponse
 from app.core.auth import get_current_user
 from typing import List
 
@@ -15,6 +15,22 @@ def get_pocs(
 ):
     pocs = db.query(Poc).all()
     return pocs
+
+@router.post("", response_model=PocResponse, status_code=status.HTTP_201_CREATED)
+def create_poc(
+    poc_in: PocCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    poc = Poc(
+        name=poc_in.name,
+        domain=poc_in.domain,
+        default_system_prompt=poc_in.default_system_prompt
+    )
+    db.add(poc)
+    db.commit()
+    db.refresh(poc)
+    return poc
 
 @router.put("/{poc_id}", response_model=PocResponse)
 def update_poc(
