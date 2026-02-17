@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.base import Poc, User
-from app.schemas.poc import PocResponse
+from app.schemas.poc import PocResponse, PocUpdate
 from app.core.auth import get_current_user
 from typing import List
 
@@ -15,3 +15,28 @@ def get_pocs(
 ):
     pocs = db.query(Poc).all()
     return pocs
+
+@router.put("/{poc_id}", response_model=PocResponse)
+def update_poc(
+    poc_id: int,
+    poc_in: PocUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    poc = db.query(Poc).filter(Poc.id == poc_id).first()
+    if not poc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="PoC not found"
+        )
+
+    if poc_in.name is not None:
+        poc.name = poc_in.name
+    if poc_in.domain is not None:
+        poc.domain = poc_in.domain
+    if poc_in.default_system_prompt is not None:
+        poc.default_system_prompt = poc_in.default_system_prompt
+
+    db.commit()
+    db.refresh(poc)
+    return poc

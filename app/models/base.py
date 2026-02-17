@@ -18,6 +18,7 @@ class Poc(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False)
     domain = Column(String(100), nullable=False)
+    default_system_prompt = Column(Text)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
 
 
