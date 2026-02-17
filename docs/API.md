@@ -9,6 +9,7 @@
 | GET | /health | 不要 | ヘルスチェック |
 | POST | /users | 不要 | ユーザー作成・APIキー発行 |
 | GET | /pocs | 必要 | PoC一覧取得 |
+| POST | /pocs | 必要 | PoC作成 |
 | PUT | /pocs/:id | 必要 | PoC更新 |
 | GET | /models | 必要 | モデル一覧取得 |
 | POST | /sessions | 必要 | セッション開始 |
@@ -57,6 +58,30 @@
     "created_at": "2026-02-16T10:00:00Z"
   }
 ]
+```
+
+---
+
+## POST /pocs — PoC作成
+
+**リクエスト**
+```json
+{
+  "name": "会計システム向けPoC",
+  "domain": "会計",
+  "default_system_prompt": "あなたは会計の専門家です。日本語で回答してください。"
+}
+```
+
+**レスポンス**
+```json
+{
+  "id": 1,
+  "name": "会計システム向けPoC",
+  "domain": "会計",
+  "default_system_prompt": "あなたは会計の専門家です。日本語で回答してください。",
+  "created_at": "2026-02-17T10:00:00Z"
+}
 ```
 
 ---
