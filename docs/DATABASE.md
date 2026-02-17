@@ -19,6 +19,7 @@
 | id | SERIAL | PK | 自動採番 |
 | name | VARCHAR(100) | NOT NULL | PoC名 |
 | domain | VARCHAR(100) | NOT NULL | 事業領域 |
+| default_system_prompt | TEXT | | デフォルトのシステムプロンプト |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() | 作成日時 |
 
 ## users テーブル
