@@ -8,6 +8,7 @@ export interface Model {
 }
 
 export interface Poc {
+  default_system_prompt: string | null
   id: number
   name: string
   domain: string

@@ -45,14 +45,18 @@ export const api = {
   // Pocs
   getPocs: () =>
     request<import('../types').Poc[]>('GET', '/pocs'),
+  createPoc: (data: { name: string; domain: string; default_system_prompt?: string }) =>
+    request<import('../types').Poc>('POST', '/pocs', data),
+  updatePoc: (id: number, data: { name?: string; domain?: string; default_system_prompt?: string }) =>
+    request<import('../types').Poc>('PUT', `/pocs/${id}`, data),
 
   // Sessions
+  getSession: (id: number) =>
+    request<import('../types').SessionDetail>('GET', `/sessions/${id}`),
   startSession: (poc_id: number, model_id: number, system_prompt: string) =>
     request<import('../types').SessionResponse>(
       'POST', '/sessions', { poc_id, model_id, system_prompt }
     ),
-  getSession: (id: number) =>
-    request<import('../types').SessionDetail>('GET', `/sessions/${id}`),
   endSession: (id: number) =>
     request<unknown>('PUT', `/sessions/${id}/end`),
 

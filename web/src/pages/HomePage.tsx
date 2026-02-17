@@ -38,6 +38,16 @@ export function HomePage() {
     fetchData()
   }, [])
 
+  function handlePocChange(pocId: string) {
+    setSelectedPocId(pocId)
+    const poc = pocs.find((p) => String(p.id) === pocId)
+    if (poc?.default_system_prompt) {
+      setSystemPrompt(poc.default_system_prompt)
+    } else {
+      setSystemPrompt('')
+    }
+  }
+
   async function handleStartSession() {
     if (!selectedModelId || !selectedPocId) return
     setStarting(true)
@@ -78,7 +88,7 @@ export function HomePage() {
                 PoCが登録されていません。DBに直接登録してください。
               </p>
             ) : (
-              <Select value={selectedPocId} onValueChange={setSelectedPocId}>
+              <Select value={selectedPocId} onValueChange={handlePocChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="PoCを選択" />
                 </SelectTrigger>
