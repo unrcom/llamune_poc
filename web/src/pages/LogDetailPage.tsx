@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { api } from '@/api/client'
-import type { Log } from '@/types'
+import type { Log, SessionDetail } from '@/types'
 
 const EVALUATION_LABELS: Record<number, string> = { 1: '良い', 2: '不十分', 3: '間違い' }
 const EVALUATION_VARIANTS: Record<number, 'default' | 'secondary' | 'destructive'> = {
@@ -21,6 +21,7 @@ export function LogDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [log, setLog] = useState<Log | null>(null)
+  const [session, setSession] = useState<SessionDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -42,6 +43,8 @@ export function LogDetailPage() {
         setReason(res.reason ?? '')
         setCorrectAnswer(res.correct_answer ?? '')
         setPriority(res.priority ? String(res.priority) : '')
+        const sessionRes = await api.getSession(res.session_id)
+        setSession(sessionRes)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'ログの取得に失敗しました')
       } finally {
@@ -62,7 +65,6 @@ export function LogDetailPage() {
         correct_answer: correctAnswer || undefined,
         priority: priority ? Number(priority) : undefined,
       })
-      // 保存後に最新データを取得し直す
       const updated = await api.getLog(Number(id))
       setLog(updated)
       setSaved(true)
@@ -100,6 +102,29 @@ export function LogDetailPage() {
           <Badge variant="outline">優先度: {PRIORITY_LABELS[log.priority]}</Badge>
         )}
       </div>
+
+      {/* セッション情報 */}
+      {session && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground">セッション情報</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex gap-2">
+              <span className="text-muted-foreground w-32 shrink-0">PoC</span>
+              <span>{session.poc_name}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-muted-foreground w-32 shrink-0">モデル</span>
+              <span>{session.model_name}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-muted-foreground w-32 shrink-0">システムプロンプト</span>
+              <span className="whitespace-pre-wrap">{session.system_prompt || '（未設定）'}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="pb-2">

@@ -52,3 +52,12 @@ export interface Log {
 export type Evaluation = 1 | 2 | 3
 export type Priority = 1 | 2 | 3
 export type Status = 1 | 2 | 3
+
+export interface SessionDetail {
+  session_id: number
+  poc_name: string
+  model_name: string
+  system_prompt: string
+  started_at: string
+  ended_at: string | null
+}

@@ -51,6 +51,8 @@ export const api = {
     request<import('../types').SessionResponse>(
       'POST', '/sessions', { poc_id, model_id, system_prompt }
     ),
+  getSession: (id: number) =>
+    request<import('../types').SessionDetail>('GET', `/sessions/${id}`),
   endSession: (id: number) =>
     request<unknown>('PUT', `/sessions/${id}/end`),
 
