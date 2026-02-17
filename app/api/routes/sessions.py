@@ -75,3 +75,33 @@ def end_session(
     db.commit()
 
     return {"session_id": session_id, "ended_at": session.ended_at}
+
+
+@router.get("/{session_id}", status_code=status.HTTP_200_OK)
+def get_session(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    session = db.query(SessionModel).filter(
+        SessionModel.id == session_id,
+        SessionModel.user_id == current_user.id
+    ).first()
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found"
+        )
+
+    poc = db.query(Poc).filter(Poc.id == session.poc_id).first()
+    model = db.query(Model).filter(Model.id == session.model_id).first()
+
+    return {
+        "session_id": session.id,
+        "poc_name": poc.name,
+        "model_name": model.model_name,
+        "system_prompt": session.system_prompt,
+        "started_at": session.started_at,
+        "ended_at": session.ended_at
+    }
