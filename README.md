@@ -15,7 +15,7 @@ llamune プロジェクトの PoC 用アプリケーションです。ユーザ�
 
 | コンポーネント | 技術 |
 |---|---|
-| フロントエンド | Node.js 系フレームワーク（`web/` ディレクトリ） |
+| フロントエンド | React + Vite + TypeScript + Tailwind CSS + shadcn/ui |
 | バックエンド | Python 3.11 / FastAPI |
 | LLM推論 | MLX（Apple Silicon）|
 | データベース | PostgreSQL 16（ローカル） |
@@ -27,56 +27,66 @@ llamune プロジェクトの PoC 用アプリケーションです。ユーザ�
 - Apple Silicon Mac（M4 Mac mini 64GB で開発・検証済み）
 - Python 3.11
 - PostgreSQL 16
+- Node.js 18+
 
 ## セットアップ
 
 ### 1. 依存ライブラリのインストール
-
 ```bash
 pip3 install -r requirements.txt --break-system-packages
 ```
 
 ### 2. データベースの作成
-
 ```bash
 createdb llamune_poc
 ```
 
 ### 3. 環境変数の設定
-
 ```bash
 cp .env.example .env
 ```
 
 `.env` を編集して設定を確認してください。
-
 ```
 DATABASE_URL=postgresql://localhost/llamune_poc
 ```
 
 ### 4. マイグレーションの実行
-
 ```bash
 alembic upgrade head
 ```
 
-### 5. 初期データの登録
-
-ユーザー作成：
-
+### 5. フロントエンドのセットアップ
 ```bash
-curl -X POST http://localhost:8000/users \
-  -H "Content-Type: application/json" \
-  -d '{"username": "your_username"}'
+cd web
+npm install
+cd ..
 ```
 
-レスポンスに含まれる `api_key` を控えておいてください。
+## 起動方法
 
-### 6. サーバー起動
-
+### バックエンド起動
 ```bash
 uvicorn app.main:app --reload
 ```
+
+起動後、http://localhost:8000 でアクセス可能
+
+### フロントエンド起動（別ターミナル）
+```bash
+cd web
+npm run dev
+```
+
+起動後、http://localhost:5173 でアクセス可能
+
+## 初回利用時の手順
+
+1. フロントエンド（http://localhost:5173）にアクセス
+2. 「設定」画面でユーザーを作成し、APIキーを取得
+3. 取得したAPIキーを「APIキー」欄に保存
+4. 「設定」画面でPoCを作成（名前・ドメイン・デフォルトシステムプロンプト）
+5. 「ホーム」からセッションを開始してチャット
 
 ## ドキュメント
 
@@ -86,7 +96,6 @@ uvicorn app.main:app --reload
 - [フロントエンド設計](docs/FRONTEND.md)
 
 ## プロジェクト構成
-
 ```
 llamune_poc/
 ├── app/
@@ -121,6 +130,14 @@ llamune_poc/
 ├── migrations/
 │   └── versions/
 ├── web/
+│   ├── src/
+│   │   ├── api/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── types/
+│   │   └── lib/
+│   ├── package.json
+│   └── vite.config.ts
 ├── .env
 ├── .gitignore
 ├── alembic.ini
