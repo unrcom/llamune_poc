@@ -37,7 +37,8 @@ def post_chat(
     answer = chat(
         model_name=model.model_name,
         system_prompt=session.system_prompt,
-        question=chat_in.question
+        question=chat_in.question,
+        session_id=session.id
     )
 
     # ログ保存
