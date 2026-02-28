@@ -66,3 +66,11 @@ app.include_router(pocs.router)
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.get("/instance-info")
+def instance_info():
+    return {
+        "instance_id": INSTANCE_ID,
+        "monkey_url": MONKEY_URL,
+    }

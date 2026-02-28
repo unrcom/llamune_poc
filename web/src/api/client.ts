@@ -32,6 +32,12 @@ async function request<T>(
 }
 
 export const api = {
+  // Instance
+  getInstanceInfo: () =>
+    request<{ instance_id: string; monkey_url: string }>(
+      'GET', '/instance-info', undefined, false
+    ),
+
   // Users
   createUser: (username: string) =>
     request<{ id: number; username: string; api_key: string }>(
