@@ -1,19 +1,16 @@
-from fastapi import Security, HTTPException, status, Depends
+import os
+from fastapi import Security, HTTPException, status
 from fastapi.security import APIKeyHeader
-from sqlalchemy.orm import Session
-from app.db.database import get_db
-from app.models.base import User
 
-API_KEY_HEADER = APIKeyHeader(name="X-API-Key")
+INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "")
+INTERNAL_TOKEN_HEADER = APIKeyHeader(name="X-Internal-Token")
+
 
 def get_current_user(
-    api_key: str = Security(API_KEY_HEADER),
-    db: Session = Depends(get_db)
+    token: str = Security(INTERNAL_TOKEN_HEADER),
 ):
-    user = db.query(User).filter(User.api_key == api_key).first()
-    if not user:
+    if not INTERNAL_TOKEN or token != INTERNAL_TOKEN:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API Key"
+            detail="Invalid internal token",
         )
-    return user

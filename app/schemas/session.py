@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 class SessionCreate(BaseModel):
+    user_id: int
     poc_id: int
     model_id: int
     system_prompt: Optional[str] = None

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.models.base import Poc, User
+from app.models.base import Poc
 from app.schemas.poc import PocCreate, PocUpdate, PocResponse
 from app.core.auth import get_current_user
 from typing import List
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/pocs", tags=["pocs"])
 @router.get("", response_model=List[PocResponse])
 def get_pocs(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    _=Depends(get_current_user),
 ):
     pocs = db.query(Poc).all()
     return pocs
@@ -20,7 +20,7 @@ def get_pocs(
 def create_poc(
     poc_in: PocCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    _=Depends(get_current_user),
 ):
     poc = Poc(
         name=poc_in.name,
@@ -37,7 +37,7 @@ def update_poc(
     poc_id: int,
     poc_in: PocUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    _=Depends(get_current_user),
 ):
     poc = db.query(Poc).filter(Poc.id == poc_id).first()
     if not poc:

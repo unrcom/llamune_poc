@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.models.base import ConversationLog, Session as SessionModel, User
+from app.models.base import ConversationLog, Session as SessionModel
 from app.schemas.log import LogUpdate, LogResponse
 from app.core.auth import get_current_user
 from typing import List
@@ -12,23 +12,19 @@ router = APIRouter(prefix="/logs", tags=["logs"])
 @router.get("", response_model=List[LogResponse])
 def get_logs(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    _=Depends(get_current_user),
 ):
-    # 自分のセッションのログのみ取得
-    logs = db.query(ConversationLog).join(SessionModel).filter(
-        SessionModel.user_id == current_user.id
-    ).all()
+    logs = db.query(ConversationLog).all()
     return logs
 
 @router.get("/{log_id}", response_model=LogResponse)
 def get_log(
     log_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    _=Depends(get_current_user),
 ):
-    log = db.query(ConversationLog).join(SessionModel).filter(
+    log = db.query(ConversationLog).filter(
         ConversationLog.id == log_id,
-        SessionModel.user_id == current_user.id
     ).first()
     if not log:
         raise HTTPException(
@@ -42,11 +38,10 @@ def update_log(
     log_id: int,
     log_in: LogUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    _=Depends(get_current_user),
 ):
-    log = db.query(ConversationLog).join(SessionModel).filter(
+    log = db.query(ConversationLog).filter(
         ConversationLog.id == log_id,
-        SessionModel.user_id == current_user.id
     ).first()
     if not log:
         raise HTTPException(

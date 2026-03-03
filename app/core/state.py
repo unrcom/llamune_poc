@@ -11,6 +11,22 @@ from typing import Optional
 MONKEY_URL = os.getenv("MONKEY_URL", "")
 INSTANCE_ID = os.getenv("INSTANCE_ID", "unnamed")
 INSTANCE_DESCRIPTION = os.getenv("INSTANCE_DESCRIPTION", INSTANCE_ID)
+INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "")
+
+
+def _get_allowed_models() -> list:
+    """DBのmodelsテーブル全件からallowed_modelsを組み立てる"""
+    try:
+        from app.db.database import get_db
+        from app.models.base import Model as ModelRecord
+        db = next(get_db())
+        try:
+            records = db.query(ModelRecord).all()
+            return [{"model_name": r.model_name, "version": r.version} for r in records]
+        finally:
+            db.close()
+    except Exception:
+        return []
 
 
 class ModelStatus(str, Enum):
@@ -32,6 +48,7 @@ class ServerState:
             "current_model": self.current_model,
             "queue_size": self.queue_size,
             "active_request": self.active_request,
+            "allowed_models": _get_allowed_models(),
         }
 
     def _notify(self):
@@ -42,6 +59,7 @@ class ServerState:
             httpx.patch(
                 f"{MONKEY_URL}/api/registry/{INSTANCE_ID}",
                 json=self.snapshot(),
+                headers={"X-Internal-Token": INTERNAL_TOKEN},
                 timeout=3.0,
             )
         except Exception:

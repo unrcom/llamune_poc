@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.models.base import Session as SessionModel, Poc, Model, User
+from app.models.base import Session as SessionModel, Poc, Model
 from app.schemas.session import SessionCreate, SessionResponse
 from app.core.auth import get_current_user
 
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 def create_session(
     session_in: SessionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    _=Depends(get_current_user),
 ):
     # poc の存在確認
     poc = db.query(Poc).filter(Poc.id == session_in.poc_id).first()
@@ -30,7 +30,7 @@ def create_session(
         )
 
     session = SessionModel(
-        user_id=current_user.id,
+        user_id=session_in.user_id,
         poc_id=session_in.poc_id,
         model_id=session_in.model_id,
         system_prompt=session_in.system_prompt
@@ -51,11 +51,10 @@ def create_session(
 def end_session(
     session_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    _=Depends(get_current_user),
 ):
     session = db.query(SessionModel).filter(
         SessionModel.id == session_id,
-        SessionModel.user_id == current_user.id
     ).first()
 
     if not session:
@@ -81,11 +80,10 @@ def end_session(
 def get_session(
     session_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    _=Depends(get_current_user),
 ):
     session = db.query(SessionModel).filter(
         SessionModel.id == session_id,
-        SessionModel.user_id == current_user.id
     ).first()
 
     if not session:

@@ -1,5 +1,5 @@
-from mlx_lm import load, generate
-from typing import Optional
+from mlx_lm import load, stream_generate
+from typing import Optional, Generator
 from app.core.state import server_state
 
 _model = None
@@ -17,25 +17,35 @@ def get_model(model_name: str):
     return _model, _tokenizer
 
 
-def chat(model_name: str, system_prompt: Optional[str], question: str, session_id: int = 0) -> str:
+def chat_stream(
+    model_name: str,
+    system_prompt: Optional[str],
+    question: str,
+    session_id: int = 0,
+    max_tokens: int = 512,
+) -> Generator[str, None, None]:
+    """
+    トークンを逐次 yield するジェネレータ。
+    全トークン消費後に set_idle() を呼ぶ。
+    """
     server_state.increment_queue()
+    model, tokenizer = get_model(model_name)
+    server_state.decrement_queue()
+    server_state.set_inferring(session_id, question)
+
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": question})
+
+    prompt = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True,
+    )
+
     try:
-        model, tokenizer = get_model(model_name)
-        server_state.decrement_queue()
-        server_state.set_inferring(session_id, question)
-
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": question})
-
-        prompt = tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
-        )
-
-        response = generate(model, tokenizer, prompt=prompt, max_tokens=512, verbose=False)
-        return response
+        for response in stream_generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens):
+            yield response.text
     finally:
         server_state.set_idle()

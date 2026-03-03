@@ -1,59 +1,60 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.models.base import Session as SessionModel, Model, ConversationLog, User
-from app.schemas.chat import ChatRequest, ChatResponse
+from app.models.base import Session as SessionModel, Model, ConversationLog
+from app.schemas.chat import ChatRequest
 from app.core.auth import get_current_user
-from app.core.llm import chat
+from app.core.llm import chat_stream
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+
+@router.post("", status_code=status.HTTP_200_OK)
 def post_chat(
     chat_in: ChatRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    _=Depends(get_current_user),
 ):
     # セッション確認
     session = db.query(SessionModel).filter(
         SessionModel.id == chat_in.session_id,
-        SessionModel.user_id == current_user.id
     ).first()
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found"
+            detail="Session not found",
         )
     if session.ended_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Session already ended"
+            detail="Session already ended",
         )
 
     # モデル取得
     model = db.query(Model).filter(Model.id == session.model_id).first()
 
-    # LLM に問い合わせ
-    answer = chat(
-        model_name=model.model_name,
-        system_prompt=session.system_prompt,
-        question=chat_in.question,
-        session_id=session.id
-    )
+    def generate_and_save():
+        tokens = []
+        model_path = model.base_model or model.model_name
+        for token in chat_stream(
+            model_name=model_path,
+            system_prompt=session.system_prompt,
+            question=chat_in.question,
+            session_id=session.id,
+        ):
+            tokens.append(token)
+            yield token
 
-    # ログ保存
-    log = ConversationLog(
-        session_id=session.id,
-        question=chat_in.question,
-        answer=answer,
-        evaluation=1  # デフォルト：良い
-    )
-    db.add(log)
-    db.commit()
-    db.refresh(log)
+        # ストリーム完了後にログ保存
+        answer = "".join(tokens)
+        log = ConversationLog(
+            session_id=session.id,
+            question=chat_in.question,
+            answer=answer,
+            evaluation=1,
+        )
+        db.add(log)
+        db.commit()
 
-    return {
-        "log_id": log.id,
-        "answer": answer,
-        "timestamp": log.timestamp
-    }
+    return StreamingResponse(generate_and_save(), media_type="text/plain")
