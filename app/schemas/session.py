@@ -2,15 +2,16 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 
+
 class SessionCreate(BaseModel):
-    user_id: int
     poc_id: int
-    model_id: int
     system_prompt: Optional[str] = None
+
 
 class SessionResponse(BaseModel):
     session_id: int
     poc_name: str
+    app_name: str
     model_name: str
     started_at: datetime
 

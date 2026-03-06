@@ -14,15 +14,23 @@ INSTANCE_DESCRIPTION = os.getenv("INSTANCE_DESCRIPTION", INSTANCE_ID)
 INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "")
 
 
-def _get_allowed_models() -> list:
-    """DBのmodelsテーブル全件からallowed_modelsを組み立てる"""
+def _get_allowed_apps() -> list:
+    """DBのpocテーブル全件からallowed_appsを組み立てる"""
     try:
         from app.db.database import get_db
-        from app.models.base import Model as ModelRecord
+        from app.models.base import Poc, Model
         db = next(get_db())
         try:
-            records = db.query(ModelRecord).all()
-            return [{"model_name": r.model_name, "version": r.version} for r in records]
+            pocs = db.query(Poc).filter(Poc.model_id.isnot(None)).all()
+            result = []
+            for poc in pocs:
+                model = db.query(Model).filter(Model.id == poc.model_id).first()
+                if model:
+                    result.append({
+                        "app_name": poc.app_name,
+                        "version": model.version,
+                    })
+            return result
         finally:
             db.close()
     except Exception:
@@ -48,7 +56,7 @@ class ServerState:
             "current_model": self.current_model,
             "queue_size": self.queue_size,
             "active_request": self.active_request,
-            "allowed_models": _get_allowed_models(),
+            "allowed_apps": _get_allowed_apps(),
         }
 
     def _notify(self):

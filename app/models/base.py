@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, SmallInteger, TIMESTAMP
+from sqlalchemy import create_engine, Column, Integer, String, Text, SmallInteger, TIMESTAMP, Boolean
 import sqlalchemy as sa
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
@@ -13,20 +13,12 @@ engine = create_engine(DATABASE_URL)
 Base = declarative_base()
 
 
-class Poc(Base):
-    __tablename__ = "poc"
-    id = Column(Integer, primary_key=True)
-    name = Column(String(100), nullable=False)
-    domain = Column(String(100), nullable=False)
-    default_system_prompt = Column(Text)
-    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
-
-
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     username = Column(String(50), nullable=False, unique=True)
-    api_key = Column(String(64), nullable=False, unique=True)
+    password_hash = Column(String(255), nullable=False)
+    is_admin = Column(Boolean, nullable=False, default=False)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
 
 
@@ -41,12 +33,22 @@ class Model(Base):
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
 
 
+class Poc(Base):
+    __tablename__ = "poc"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False)
+    domain = Column(String(100), nullable=False)
+    app_name = Column(String(100), nullable=False, unique=True)
+    model_id = Column(Integer, ForeignKey("models.id"), nullable=True)
+    default_system_prompt = Column(Text)
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+
+
 class Session(Base):
     __tablename__ = "sessions"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     poc_id = Column(Integer, ForeignKey("poc.id"), nullable=False)
-    model_id = Column(Integer, ForeignKey("models.id"), nullable=False)
     system_prompt = Column(Text)
     started_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     ended_at = Column(TIMESTAMP)

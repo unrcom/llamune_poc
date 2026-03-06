@@ -1,13 +1,16 @@
 from pydantic import BaseModel
 from datetime import datetime
 
+
 class UserCreate(BaseModel):
     username: str
+    password: str
+
 
 class UserResponse(BaseModel):
     id: int
     username: str
-    api_key: str
+    is_admin: bool
     created_at: datetime
 
     class Config:
