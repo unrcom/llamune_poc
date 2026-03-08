@@ -21,3 +21,9 @@ class ModelResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ModelUpdate(BaseModel):
+    base_model: Optional[str] = None
+    trained_at: Optional[datetime] = None
+    description: Optional[str] = None

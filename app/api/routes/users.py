@@ -4,13 +4,11 @@ from app.db.database import get_db
 from app.models.base import User
 from app.schemas.user import UserCreate, UserResponse
 from app.core.auth import get_current_admin
-from passlib.context import CryptContext
 from typing import List
 
+import bcrypt
+
 router = APIRouter(prefix="/users", tags=["users"])
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 @router.get("", response_model=List[UserResponse])
 def get_users(
@@ -32,7 +30,7 @@ def create_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already exists",
         )
-    password_hash = pwd_context.hash(user_in.password)
+    password_hash = bcrypt.hashpw(user_in.password.encode(), bcrypt.gensalt()).decode()
     user = User(username=user_in.username, password_hash=password_hash)
     db.add(user)
     db.commit()
