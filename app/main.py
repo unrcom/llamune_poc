@@ -62,8 +62,10 @@ async def _heartbeat_loop():
     async with httpx.AsyncClient() as client:
         while True:
             try:
+                allowed_apps = get_allowed_apps()
                 res = await client.put(
                     f"{MONKEY_URL}/api/registry/{INSTANCE_ID}/heartbeat",
+                    json={"allowed_apps": allowed_apps},
                     headers={"X-Internal-Token": INTERNAL_TOKEN},
                     timeout=5.0,
                 )
