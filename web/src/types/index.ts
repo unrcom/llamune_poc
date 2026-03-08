@@ -8,10 +8,14 @@ export interface Model {
 }
 
 export interface Poc {
-  default_system_prompt: string | null
   id: number
   name: string
   domain: string
+  app_name: string
+  model_id: number | null
+  model_name: string | null
+  model_version: number | null
+  default_system_prompt: string | null
   created_at: string
 }
 

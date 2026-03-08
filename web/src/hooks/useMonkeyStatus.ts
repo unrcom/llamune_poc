@@ -1,84 +1,56 @@
 import { useState, useEffect, useRef } from 'react'
-import { api } from '@/api/client'
+import { MONKEY_WS_URL } from '@/api/client'
 
 export type ModelStatus = 'idle' | 'loading' | 'inferring'
 
-export interface MonkeyStatus {
+export interface InstanceStatus {
+  instance_id: string
   healthy: boolean
   model_status: ModelStatus
   current_model: string | null
   queue_size: number
 }
 
-const DEFAULT_STATUS: MonkeyStatus = {
-  healthy: false,
-  model_status: 'idle',
-  current_model: null,
-  queue_size: 0,
-}
-
 export function useMonkeyStatus() {
-  const [status, setStatus] = useState<MonkeyStatus | null>(null)
+  const [instances, setInstances] = useState<InstanceStatus[]>([])
   const [connected, setConnected] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
     let cancelled = false
+    const wsUrl = `${MONKEY_WS_URL}/ws/status`
 
-    async function init() {
-      // /instance-info から instance_id と monkey_url を取得
-      let instanceId: string
-      let monkeyUrl: string
-      try {
-        const info = await api.getInstanceInfo()
-        instanceId = info.instance_id
-        monkeyUrl = info.monkey_url
-      } catch {
-        return
+    function connect() {
+      if (cancelled) return
+      const ws = new WebSocket(wsUrl)
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        if (!cancelled) setConnected(true)
       }
 
-      // monkey_url が未設定なら何もしない
-      if (!monkeyUrl) return
-
-      // http(s) → ws(s) に変換
-      const wsUrl = monkeyUrl.replace(/^http/, 'ws') + '/ws/status'
-
-      function connect() {
+      ws.onmessage = (event) => {
         if (cancelled) return
-        const ws = new WebSocket(wsUrl)
-        wsRef.current = ws
-
-        ws.onopen = () => {
-          if (!cancelled) setConnected(true)
-        }
-
-        ws.onmessage = (event) => {
-          if (cancelled) return
-          try {
-            const instances: Array<MonkeyStatus & { instance_id: string }> = JSON.parse(event.data)
-            const mine = instances.find((i) => i.instance_id === instanceId)
-            setStatus(mine ?? { ...DEFAULT_STATUS })
-          } catch {
-            // ignore parse error
-          }
-        }
-
-        ws.onclose = () => {
-          if (cancelled) return
-          setConnected(false)
-          // 5秒後に再接続
-          setTimeout(connect, 5000)
-        }
-
-        ws.onerror = () => {
-          ws.close()
+        try {
+          const data: InstanceStatus[] = JSON.parse(event.data)
+          setInstances(data)
+        } catch {
+          // ignore parse error
         }
       }
 
-      connect()
+      ws.onclose = () => {
+        if (cancelled) return
+        setConnected(false)
+        setTimeout(connect, 5000)
+      }
+
+      ws.onerror = () => {
+        ws.close()
+      }
     }
 
-    init()
+    connect()
 
     return () => {
       cancelled = true
@@ -86,5 +58,5 @@ export function useMonkeyStatus() {
     }
   }, [])
 
-  return { status, connected }
+  return { instances, connected }
 }

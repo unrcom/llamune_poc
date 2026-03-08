@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { api } from '@/api/client'
+import { api, chatStream } from '@/api/client'
 import type { Log } from '@/types'
 
 const EVALUATION_LABELS: Record<number, string> = { 1: '良い', 2: '不十分', 3: '間違い' }
@@ -25,28 +25,28 @@ interface EvalFormState {
 export function ChatPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const app_name = (location.state as { app_name?: string })?.app_name ?? ""
   const [question, setQuestion] = useState('')
   const [logs, setLogs] = useState<Log[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [ending, setEnding] = useState(false)
   const [error, setError] = useState('')
+  const [streamingAnswer, setStreamingAnswer] = useState('')
   const [evalForms, setEvalForms] = useState<Record<number, EvalFormState>>({})
   const [savingEval, setSavingEval] = useState<Record<number, boolean>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // ページロード時にセッションのログを取得
   useEffect(() => {
     async function fetchSessionLogs() {
       if (!sessionId) return
       try {
         const allLogs = await api.getLogs()
-        const sessionLogs = allLogs.filter(
-          (log) => log.session_id === Number(sessionId)
-        )
+        const sessionLogs = allLogs.filter((log) => log.session_id === Number(sessionId))
         setLogs(sessionLogs)
-      } catch (e) {
-        // ログ取得失敗は無視して空のまま開始
+      } catch {
+        // ログ取得失敗は無視
       } finally {
         setLoading(false)
       }
@@ -56,30 +56,31 @@ export function ChatPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [logs])
+  }, [logs, streamingAnswer])
 
   async function handleSend() {
     if (!question.trim() || !sessionId) return
     setSending(true)
     setError('')
+    const q = question.trim()
+    setQuestion('')
+    setStreamingAnswer('')
+
     try {
-      const res = await api.chat(Number(sessionId), question.trim())
-      const newLog: Log = {
-        id: res.log_id,
-        session_id: Number(sessionId),
-        question: question.trim(),
-        answer: res.answer,
-        evaluation: null,
-        reason: null,
-        correct_answer: null,
-        priority: null,
-        status: 1,
-        timestamp: new Date().toISOString(),
-      }
-      setLogs((prev) => [...prev, newLog])
-      setQuestion('')
+      let answer = ''
+      await chatStream(Number(sessionId), app_name, q, (token) => {
+        answer += token
+        setStreamingAnswer(answer)
+      })
+
+      // ストリーミング完了後、ログ一覧を再取得して最新のlog_idを反映
+      const allLogs = await api.getLogs()
+      const sessionLogs = allLogs.filter((log) => log.session_id === Number(sessionId))
+      setLogs(sessionLogs)
+      setStreamingAnswer('')
     } catch (e) {
       setError(e instanceof Error ? e.message : '送信に失敗しました')
+      setStreamingAnswer('')
     } finally {
       setSending(false)
     }
@@ -115,7 +116,10 @@ export function ChatPage() {
         correct_answer: form.correct_answer || undefined,
         priority: form.priority ? Number(form.priority) : undefined,
       })
-      setLogs((prev) => prev.map((l) => (l.id === logId ? updated : l)))
+      // ログを更新
+      const allLogs = await api.getLogs()
+      const sessionLogs = allLogs.filter((log) => log.session_id === Number(sessionId))
+      setLogs(sessionLogs)
       setEvalForms((prev) => { const next = { ...prev }; delete next[logId]; return next })
     } catch (e) {
       setError(e instanceof Error ? e.message : '評価の保存に失敗しました')
@@ -147,7 +151,7 @@ export function ChatPage() {
       </div>
 
       <div className="space-y-4">
-        {logs.length === 0 && (
+        {logs.length === 0 && !streamingAnswer && (
           <p className="text-muted-foreground text-sm">質問を入力してチャットを開始してください</p>
         )}
         {logs.map((log) => (
@@ -241,6 +245,19 @@ export function ChatPage() {
             )}
           </div>
         ))}
+
+        {/* ストリーミング中の表示 */}
+        {streamingAnswer && (
+          <div className="space-y-2">
+            <div className="flex justify-start">
+              <div className="max-w-[80%] bg-muted rounded-lg px-4 py-2 text-sm whitespace-pre-wrap">
+                {streamingAnswer}
+                <span className="animate-pulse">▌</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 

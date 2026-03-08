@@ -1,9 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
 import { useMonkeyStatus } from '@/hooks/useMonkeyStatus'
 
 interface LayoutProps {
   children: React.ReactNode
+  onLogout: () => void
 }
 
 const MODEL_STATUS_LABEL: Record<string, string> = {
@@ -18,15 +20,25 @@ const MODEL_STATUS_COLOR: Record<string, string> = {
   inferring: 'bg-blue-100 text-blue-800',
 }
 
-export function Layout({ children }: LayoutProps) {
+export function Layout({ children, onLogout }: LayoutProps) {
   const location = useLocation()
-  const { status, connected } = useMonkeyStatus()
+  const { instances, connected } = useMonkeyStatus()
 
   const navItems = [
     { path: '/', label: 'ホーム' },
     { path: '/logs', label: 'ログ一覧' },
     { path: '/setup', label: '設定' },
   ]
+
+  // 全インスタンスのうち healthy なものを集計
+  const healthyCount = instances.filter((i) => i.healthy).length
+  const totalCount = instances.length
+  // 推論中インスタンスがあれば inferring、ロード中があれば loading、それ以外 idle
+  const overallStatus = instances.some((i) => i.model_status === 'inferring')
+    ? 'inferring'
+    : instances.some((i) => i.model_status === 'loading')
+    ? 'loading'
+    : 'idle'
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,18 +48,17 @@ export function Layout({ children }: LayoutProps) {
             <Link to="/" className="font-bold text-lg tracking-tight">
               llamune_poc
             </Link>
-            {/* monkey ステータスバッジ */}
-            {connected && status ? (
+            {connected && totalCount > 0 ? (
               <span
                 className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  status.healthy
-                    ? MODEL_STATUS_COLOR[status.model_status] ?? 'bg-gray-100 text-gray-800'
+                  healthyCount > 0
+                    ? MODEL_STATUS_COLOR[overallStatus] ?? 'bg-gray-100 text-gray-800'
                     : 'bg-red-100 text-red-800'
                 }`}
               >
-                {status.healthy
-                  ? MODEL_STATUS_LABEL[status.model_status] ?? status.model_status
-                  : '応答なし'}
+                {healthyCount > 0
+                  ? `${MODEL_STATUS_LABEL[overallStatus] ?? overallStatus} (${healthyCount}/${totalCount})`
+                  : `応答なし (0/${totalCount})`}
               </span>
             ) : connected ? (
               <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">
@@ -69,6 +80,9 @@ export function Layout({ children }: LayoutProps) {
                 {item.label}
               </Link>
             ))}
+            <Button variant="ghost" size="sm" onClick={onLogout} className="ml-2 text-muted-foreground">
+              ログアウト
+            </Button>
           </nav>
         </div>
       </header>

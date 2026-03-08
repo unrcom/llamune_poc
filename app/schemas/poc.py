@@ -23,6 +23,8 @@ class PocResponse(BaseModel):
     domain: str
     app_name: str
     model_id: Optional[int] = None
+    model_name: Optional[str] = None
+    model_version: Optional[int] = None
     default_system_prompt: Optional[str] = None
     created_at: datetime
 

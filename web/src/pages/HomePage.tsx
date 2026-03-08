@@ -5,14 +5,13 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import { api } from '@/api/client'
-import type { Model, Poc } from '@/types'
+import type { Poc } from '@/types'
 
 export function HomePage() {
   const navigate = useNavigate()
-  const [models, setModels] = useState<Model[]>([])
   const [pocs, setPocs] = useState<Poc[]>([])
-  const [selectedModelId, setSelectedModelId] = useState('')
   const [selectedPocId, setSelectedPocId] = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
   const [loading, setLoading] = useState(true)
@@ -23,12 +22,8 @@ export function HomePage() {
     async function fetchData() {
       setError('')
       try {
-        const [modelsRes, pocsRes] = await Promise.allSettled([
-          api.getModels(),
-          api.getPocs(),
-        ])
-        if (modelsRes.status === 'fulfilled') setModels(modelsRes.value)
-        if (pocsRes.status === 'fulfilled') setPocs(pocsRes.value)
+        const pocsRes = await api.getPocs()
+        setPocs(pocsRes)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'データ取得に失敗しました')
       } finally {
@@ -41,29 +36,23 @@ export function HomePage() {
   function handlePocChange(pocId: string) {
     setSelectedPocId(pocId)
     const poc = pocs.find((p) => String(p.id) === pocId)
-    if (poc?.default_system_prompt) {
-      setSystemPrompt(poc.default_system_prompt)
-    } else {
-      setSystemPrompt('')
-    }
+    setSystemPrompt(poc?.default_system_prompt ?? '')
   }
 
   async function handleStartSession() {
-    if (!selectedModelId || !selectedPocId) return
+    if (!selectedPocId) return
     setStarting(true)
     setError('')
     try {
-      const session = await api.startSession(
-        Number(selectedPocId),
-        Number(selectedModelId),
-        systemPrompt
-      )
-      navigate(`/chat/${session.session_id}`)
+      const session = await api.startSession(Number(selectedPocId), systemPrompt)
+      navigate(`/chat/${session.session_id}`, { state: { app_name: session.app_name } })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'セッション開始に失敗しました')
       setStarting(false)
     }
   }
+
+  const selectedPoc = pocs.find((p) => String(p.id) === selectedPocId)
 
   if (loading) {
     return <p className="text-muted-foreground">読み込み中...</p>
@@ -76,7 +65,7 @@ export function HomePage() {
       <Card>
         <CardHeader>
           <CardTitle>設定</CardTitle>
-          <CardDescription>チャットを開始する前に PoC・モデル・システムプロンプトを選択してください</CardDescription>
+          <CardDescription>チャットを開始する前に PoC を選択してください</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
 
@@ -85,7 +74,7 @@ export function HomePage() {
             <Label>PoC</Label>
             {pocs.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                PoCが登録されていません。DBに直接登録してください。
+                PoCが登録されていません。設定画面から作成してください。
               </p>
             ) : (
               <Select value={selectedPocId} onValueChange={handlePocChange}>
@@ -103,28 +92,19 @@ export function HomePage() {
             )}
           </div>
 
-          {/* モデル選択 */}
-          <div className="space-y-2">
-            <Label>モデル</Label>
-            {models.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                モデルが登録されていません。DBに直接登録してください。
-              </p>
-            ) : (
-              <Select value={selectedModelId} onValueChange={setSelectedModelId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="モデルを選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  {models.map((model) => (
-                    <SelectItem key={model.id} value={String(model.id)}>
-                      {model.model_name}（v{model.version}）
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+          {/* 選択されたPoCの情報 */}
+          {selectedPoc && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>モデル:</span>
+              {selectedPoc.model_name ? (
+                <Badge variant="outline">{selectedPoc.model_name} v{selectedPoc.model_version}</Badge>
+              ) : (
+                <span className="text-destructive text-xs">モデル未設定（設定画面で設定してください）</span>
+              )}
+              <span className="ml-2">app:</span>
+              <code className="text-xs bg-muted px-1 rounded">{selectedPoc.app_name}</code>
+            </div>
+          )}
 
           {/* システムプロンプト */}
           <div className="space-y-2">
@@ -142,7 +122,7 @@ export function HomePage() {
 
           <Button
             onClick={handleStartSession}
-            disabled={starting || !selectedModelId || !selectedPocId}
+            disabled={starting || !selectedPocId || !selectedPoc?.model_name}
             className="w-full"
           >
             {starting ? '開始中...' : 'チャットを開始'}
