@@ -17,7 +17,7 @@ export default function App() {
   }
 
   function handleLogout() {
-    import('@/api/client').then(({ clearToken }) => clearToken())
+    import('@/api/client').then(({ clearTokens }) => clearTokens())
     setLoggedIn(false)
   }
 

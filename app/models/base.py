@@ -67,3 +67,11 @@ class ConversationLog(Base):
     priority = Column(SmallInteger)
     status = Column(SmallInteger, nullable=False, default=1)
     memo = Column(Text)
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String(255), nullable=False, unique=True)
+    expires_at = Column(TIMESTAMP, nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)

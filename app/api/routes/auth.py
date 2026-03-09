@@ -1,38 +1,88 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from typing import Optional
 import bcrypt
+import secrets
+from datetime import datetime, timedelta
 from app.db.database import get_db
-from app.models.base import User
+from app.models.base import User, RefreshToken
 from app.core.auth import create_access_token
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+REFRESH_TOKEN_EXPIRE_DAYS = 30
 
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 class LoginRequest(BaseModel):
     username: str
     password: str
 
-
 class LoginResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
 
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+class RefreshResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+def _create_refresh_token(db: Session, user_id: int) -> str:
+    token = secrets.token_hex(32)
+    expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    db_token = RefreshToken(user_id=user_id, token=token, expires_at=expires_at)
+    db.add(db_token)
+    db.commit()
+    return token
 
 @router.post("/login", response_model=LoginResponse)
-def login(
-    login_in: LoginRequest,
-    db: Session = Depends(get_db),
-):
+def login(login_in: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == login_in.username).first()
     if not user or not bcrypt.checkpw(login_in.password.encode(), user.password_hash.encode()):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="ユーザー名またはパスワードが正しくありません",
         )
-    token = create_access_token(
+    access_token = create_access_token(
         user_id=user.id,
         username=user.username,
         is_admin=user.is_admin,
     )
-    return LoginResponse(access_token=token)
+    refresh_token = _create_refresh_token(db, user.id)
+    return LoginResponse(access_token=access_token, refresh_token=refresh_token)
+
+@router.post("/refresh", response_model=RefreshResponse)
+def refresh(req: RefreshRequest, db: Session = Depends(get_db)):
+    db_token = db.query(RefreshToken).filter(RefreshToken.token == req.refresh_token).first()
+    if not db_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+    if db_token.expires_at < datetime.utcnow():
+        db.delete(db_token)
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired")
+    user = db.query(User).filter(User.id == db_token.user_id).first()
+    if not user:
+        db.delete(db_token)
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    # ローテーション: 古いトークンを削除して新しいものを発行
+    db.delete(db_token)
+    db.commit()
+    access_token = create_access_token(
+        user_id=user.id,
+        username=user.username,
+        is_admin=user.is_admin,
+    )
+    new_refresh_token = _create_refresh_token(db, user.id)
+    return RefreshResponse(access_token=access_token, refresh_token=new_refresh_token)
+
+@router.post("/logout")
+def logout(req: RefreshRequest, db: Session = Depends(get_db)):
+    db_token = db.query(RefreshToken).filter(RefreshToken.token == req.refresh_token).first()
+    if db_token:
+        db.delete(db_token)
+        db.commit()
+    return {"message": "Logged out successfully"}

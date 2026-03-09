@@ -3,12 +3,25 @@ import { MONKEY_WS_URL } from '@/api/client'
 
 export type ModelStatus = 'idle' | 'loading' | 'inferring'
 
+export interface AllowedApp {
+  app_name: string
+  version: number
+}
+
+export interface ActiveRequest {
+  session_id: number
+  question_preview: string
+  started_at: string
+}
+
 export interface InstanceStatus {
   instance_id: string
   healthy: boolean
   model_status: ModelStatus
   current_model: string | null
   queue_size: number
+  active_request: ActiveRequest | null
+  allowed_apps: AllowedApp[]
 }
 
 export function useMonkeyStatus() {

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { api, setToken } from '@/api/client'
+import { api, setToken, setRefreshToken } from '@/api/client'
 
 interface LoginPageProps {
   onLogin: () => void
@@ -24,6 +24,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     try {
       const res = await api.login(username.trim(), password.trim())
       setToken(res.access_token)
+      setRefreshToken(res.refresh_token)
       onLogin()
       navigate('/')
     } catch (e) {

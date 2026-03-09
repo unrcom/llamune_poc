@@ -30,43 +30,44 @@ export function Layout({ children, onLogout }: LayoutProps) {
     { path: '/setup', label: '設定' },
   ]
 
-  // 全インスタンスのうち healthy なものを集計
-  const healthyCount = instances.filter((i) => i.healthy).length
-  const totalCount = instances.length
-  // 推論中インスタンスがあれば inferring、ロード中があれば loading、それ以外 idle
-  const overallStatus = instances.some((i) => i.model_status === 'inferring')
-    ? 'inferring'
-    : instances.some((i) => i.model_status === 'loading')
-    ? 'loading'
-    : 'idle'
-
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 bg-background border-b">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link to="/" className="font-bold text-lg tracking-tight">
+          <div className="flex items-center gap-2 min-w-0">
+            <Link to="/" className="font-bold text-lg tracking-tight shrink-0">
               llamune_poc
             </Link>
-            {connected && totalCount > 0 ? (
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  healthyCount > 0
-                    ? MODEL_STATUS_COLOR[overallStatus] ?? 'bg-gray-100 text-gray-800'
+            {connected && instances.length > 0 ? (
+              <div className="flex items-center gap-1 overflow-x-auto">
+                {instances.map((inst) => {
+                  const appNames = inst.allowed_apps.map((a) => a.app_name).join(', ')
+                  const statusColor = inst.healthy
+                    ? MODEL_STATUS_COLOR[inst.model_status] ?? 'bg-gray-100 text-gray-800'
                     : 'bg-red-100 text-red-800'
-                }`}
-              >
-                {healthyCount > 0
-                  ? `${MODEL_STATUS_LABEL[overallStatus] ?? overallStatus} (${healthyCount}/${totalCount})`
-                  : `応答なし (0/${totalCount})`}
-              </span>
+                  const statusLabel = inst.healthy
+                    ? MODEL_STATUS_LABEL[inst.model_status] ?? inst.model_status
+                    : '応答なし'
+                  return (
+                    <span
+                      key={inst.instance_id}
+                      title={`${inst.instance_id}${appNames ? ` [${appNames}]` : ''}`}
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 ${statusColor}`}
+                    >
+                      {inst.instance_id.replace('llamune-poc-', 'p-')}: {statusLabel}
+                      {inst.healthy && inst.queue_size > 0 && ` Q:${inst.queue_size}`}
+                      {inst.healthy && inst.active_request && ` [${inst.active_request.session_id}]`}
+                    </span>
+                  )
+                })}
+              </div>
             ) : connected ? (
               <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">
                 未登録
               </span>
             ) : null}
           </div>
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-1 shrink-0 ml-2">
             {navItems.map((item) => (
               <Link
                 key={item.path}
