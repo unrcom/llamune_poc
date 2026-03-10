@@ -5,9 +5,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { api } from '@/api/client'
-import { logsApi, datasetsApi } from '@/api/client'
-import type { Poc, Log, Dataset } from '@/types'
+import { api, logsApi, datasetsApi, systemPromptsApi } from '@/api/client'
+import type { Poc, Log, Dataset, SystemPrompt } from '@/types'
 
 const EVAL_LABEL: Record<number, string> = { 1: '良い', 2: '不十分', 3: '間違い' }
 const EVAL_COLOR: Record<number, string> = {
@@ -18,8 +17,9 @@ const EVAL_COLOR: Record<number, string> = {
 
 const PRIORITY_LABEL: Record<number, string> = { 1: '高', 2: '中', 3: '低' }
 
-function LogItem({ log, datasets }: { log: import('@/types').Log; datasets: import('@/types').Dataset[] }) {
+function LogItem({ log, datasets, pocId }: { log: import('@/types').Log; datasets: import('@/types').Dataset[]; pocId: number }) {
   const [open, setOpen] = React.useState(false)
+  const navigate = useNavigate()
   return (
     <div className="border rounded-md text-sm overflow-hidden">
       <div
@@ -75,6 +75,23 @@ function LogItem({ log, datasets }: { log: import('@/types').Log; datasets: impo
               </div>
             </div>
           )}
+          {log.system_prompt_version && (
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">システムプロンプト</p>
+              <div className="flex items-start gap-2">
+                <span className="text-xs bg-muted px-1.5 py-0.5 rounded shrink-0">v{log.system_prompt_version}</span>
+                {log.system_prompt_content && (
+                  <p className="text-xs text-muted-foreground line-clamp-2">{log.system_prompt_content}</p>
+                )}
+              </div>
+            </div>
+          )}
+          <button
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+            onClick={() => navigate(`/chat/${log.session_id}`, { state: { poc_id: pocId, edit_log_id: log.id, evaluation: log.evaluation, reason: log.reason, correct_answer: log.correct_answer, priority: log.priority, dataset_ids: log.dataset_ids } })}
+          >
+            編集
+          </button>
         </div>
       )}
     </div>
@@ -90,6 +107,7 @@ export function TuningDetailPage() {
   const [systemPrompt, setSystemPrompt] = useState('')
   const [promptSaving, setPromptSaving] = useState(false)
   const [promptSaved, setPromptSaved] = useState(false)
+  const [systemPromptHistory, setSystemPromptHistory] = useState<SystemPrompt[]>([])
 
   const [logs, setLogs] = useState<Log[]>([])
   const [datasets, setDatasets] = useState<Dataset[]>([])
@@ -102,10 +120,12 @@ export function TuningDetailPage() {
   useEffect(() => {
     async function fetchInitial() {
       try {
-        const [pocsRes, datasetsRes] = await Promise.all([
+        const [pocsRes, datasetsRes, promptsRes] = await Promise.all([
           api.getPocs(),
           datasetsApi.getDatasets(),
+          systemPromptsApi.getSystemPrompts(pocId),
         ])
+        setSystemPromptHistory(promptsRes)
         const found = pocsRes.find((p) => p.id === pocId)
         if (!found) { navigate('/'); return }
         setPoc(found)
@@ -140,9 +160,12 @@ export function TuningDetailPage() {
     if (!poc) return
     setPromptSaving(true)
     try {
-      await api.updatePoc(poc.id, { default_system_prompt: systemPrompt })
+      await systemPromptsApi.createSystemPrompt(poc.id, systemPrompt)
       setPromptSaved(true)
       setTimeout(() => setPromptSaved(false), 2000)
+      // 履歴を再取得
+      const prompts = await systemPromptsApi.getSystemPrompts(poc.id)
+      setSystemPromptHistory(prompts)
     } catch (e) {
       setError(e instanceof Error ? e.message : '保存に失敗しました')
     } finally {
@@ -208,8 +231,26 @@ export function TuningDetailPage() {
             onClick={handleSavePrompt}
             disabled={promptSaving}
           >
-            {promptSaved ? '保存しました' : promptSaving ? '保存中...' : 'デフォルトとして保存'}
+            {promptSaved ? '保存しました' : promptSaving ? '保存中...' : '新バージョンとして保存'}
           </Button>
+          {systemPromptHistory.length > 0 && (
+            <div className="mt-3 space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">履歴</p>
+              <div className="space-y-1">
+                {systemPromptHistory.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-start gap-2 text-xs border rounded p-2 cursor-pointer hover:bg-muted/50"
+                    onClick={() => setSystemPrompt(p.content)}
+                  >
+                    <span className="shrink-0 font-medium">v{p.version}</span>
+                    <span className="text-muted-foreground truncate">{p.content}</span>
+                    <span className="shrink-0 text-muted-foreground">{new Date(p.created_at).toLocaleDateString('ja-JP')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -272,7 +313,7 @@ export function TuningDetailPage() {
           ) : (
             <div className="space-y-2">
               {logs.map((log) => (
-                <LogItem key={log.id} log={log} datasets={datasets} />
+                <LogItem key={log.id} log={log} datasets={datasets} pocId={pocId} />
               ))}
             </div>
           )}

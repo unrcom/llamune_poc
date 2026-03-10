@@ -27,7 +27,7 @@ export function ChatPage() {
   const { sessionId: sessionIdParam } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
   const location = useLocation()
-  const state = location.state as { app_name?: string; poc_id?: number; system_prompt?: string } | null
+  const state = location.state as { app_name?: string; poc_id?: number; system_prompt?: string; edit_log_id?: number; evaluation?: number; reason?: string; correct_answer?: string; priority?: number; dataset_ids?: number[] } | null
   const app_name = state?.app_name ?? ''
   const poc_id = state?.poc_id
   const initial_system_prompt = state?.system_prompt ?? ''
@@ -43,7 +43,20 @@ export function ChatPage() {
   const [ending] = useState(false)
   const [error, setError] = useState('')
   const [streamingAnswer, setStreamingAnswer] = useState('')
-  const [evalForms, setEvalForms] = useState<Record<number, EvalFormState>>({})
+  const [evalForms, setEvalForms] = useState<Record<number, EvalFormState>>(() => {
+    if (state?.edit_log_id) {
+      return {
+        [state.edit_log_id]: {
+          evaluation: state.evaluation ? String(state.evaluation) : '',
+          reason: state.reason ?? '',
+          correct_answer: state.correct_answer ?? '',
+          priority: state.priority ? String(state.priority) : '',
+          dataset_ids: state.dataset_ids ?? [],
+        }
+      }
+    }
+    return {}
+  })
   const [savingEval, setSavingEval] = useState<Record<number, boolean>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -201,7 +214,7 @@ export function ChatPage() {
                 {log.answer}
               </div>
             </div>
-            {log.evaluation ? (
+            {log.evaluation && !evalForms[log.id] ? (
               <div className="flex items-center gap-2 pl-1 flex-wrap">
                 <Badge variant={EVALUATION_VARIANTS[log.evaluation]}>
                   {EVALUATION_LABELS[log.evaluation]}
@@ -215,6 +228,21 @@ export function ChatPage() {
                     <span key={did} className="text-xs bg-muted px-1.5 py-0.5 rounded">{d.name}</span>
                   ) : null
                 })}
+                <button
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
+                  onClick={() => setEvalForms((prev) => ({
+                    ...prev,
+                    [log.id]: {
+                      evaluation: String(log.evaluation),
+                      reason: log.reason ?? '',
+                      correct_answer: log.correct_answer ?? '',
+                      priority: log.priority ? String(log.priority) : '',
+                      dataset_ids: log.dataset_ids,
+                    }
+                  }))}
+                >
+                  編集
+                </button>
               </div>
             ) : (
               <Card className="border-dashed">
@@ -297,13 +325,22 @@ export function ChatPage() {
                       </div>
                     </div>
                   )}
-                  <Button
-                    size="sm"
-                    onClick={() => handleSaveEval(log.id)}
-                    disabled={savingEval[log.id] || !evalForms[log.id]?.evaluation}
-                  >
-                    {savingEval[log.id] ? '保存中...' : '評価を保存'}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleSaveEval(log.id)}
+                      disabled={savingEval[log.id] || !evalForms[log.id]?.evaluation}
+                    >
+                      {savingEval[log.id] ? '保存中...' : '評価を保存'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEvalForms((prev) => { const next = { ...prev }; delete next[log.id]; return next })}
+                    >
+                      キャンセル
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}

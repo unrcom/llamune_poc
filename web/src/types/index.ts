@@ -56,6 +56,8 @@ export interface Log {
   status: number
   memo: string | null
   dataset_ids: number[]
+  system_prompt_version: number | null
+  system_prompt_content: string | null
 }
 
 export type Evaluation = 1 | 2 | 3
@@ -76,6 +78,15 @@ export interface Dataset {
   name: string
   description: string | null
   is_system: boolean
+  created_by: number | null
+  created_at: string
+}
+
+export interface SystemPrompt {
+  id: number
+  poc_id: number
+  content: string
+  version: number
   created_by: number | null
   created_at: string
 }

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.db.database import get_db
-from app.models.base import Session as SessionModel, Poc, Model, User
+from app.models.base import Session as SessionModel, Poc, Model, User, SystemPrompt
 from app.schemas.session import SessionCreate, SessionResponse
 from app.core.auth import get_current_user
 
@@ -23,10 +23,16 @@ def create_session(
 
     model = db.query(Model).filter(Model.id == poc.model_id).first()
 
+    # 最新のシステムプロンプトを取得
+    latest_prompt = db.query(SystemPrompt).filter(
+        SystemPrompt.poc_id == poc.id
+    ).order_by(SystemPrompt.version.desc()).first()
+
     session = SessionModel(
         user_id=current_user.id,
         poc_id=poc.id,
         system_prompt=session_in.system_prompt or poc.default_system_prompt,
+        system_prompt_id=latest_prompt.id if latest_prompt else None,
     )
     db.add(session)
     db.commit()
@@ -73,10 +79,12 @@ def get_session(
 
     return {
         "session_id": session.id,
+        "poc_id": session.poc_id,
         "poc_name": poc.name,
         "app_name": poc.app_name,
         "model_name": model.model_name if model else None,
         "system_prompt": session.system_prompt,
+        "system_prompt_id": session.system_prompt_id,
         "started_at": session.started_at,
         "ended_at": session.ended_at,
     }

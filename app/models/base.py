@@ -51,6 +51,7 @@ class Session(Base):
     poc_id = Column(Integer, ForeignKey("poc.id"), nullable=False)
     system_prompt = Column(Text)
     started_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    system_prompt_id = Column(Integer, ForeignKey("system_prompts.id"), nullable=True)
     ended_at = Column(TIMESTAMP)
 
 
@@ -91,3 +92,13 @@ class ConversationLogDataset(Base):
     __tablename__ = "conversation_log_datasets"
     log_id = Column(Integer, ForeignKey("conversation_logs.id"), primary_key=True)
     dataset_id = Column(Integer, ForeignKey("datasets.id"), primary_key=True)
+
+
+class SystemPrompt(Base):
+    __tablename__ = "system_prompts"
+    id = Column(Integer, primary_key=True)
+    poc_id = Column(Integer, ForeignKey("poc.id"), nullable=False)
+    content = Column(Text, nullable=False)
+    version = Column(Integer, nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)

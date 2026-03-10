@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.models.base import ConversationLog, Session as SessionModel, Dataset, ConversationLogDataset
+from app.models.base import ConversationLog, Session as SessionModel, Dataset, ConversationLogDataset, SystemPrompt
 from app.schemas.log import LogUpdate, LogResponse
 from app.core.auth import get_current_user
 from typing import List, Optional
@@ -17,6 +17,15 @@ def _attach_dataset_ids(log: ConversationLog, db: Session) -> LogResponse:
     ]
     resp = LogResponse.model_validate(log)
     resp.dataset_ids = dataset_ids
+
+    # システムプロンプトバージョンを取得
+    session = db.query(SessionModel).filter(SessionModel.id == log.session_id).first()
+    if session and session.system_prompt_id:
+        prompt = db.query(SystemPrompt).filter(SystemPrompt.id == session.system_prompt_id).first()
+        if prompt:
+            resp.system_prompt_version = prompt.version
+            resp.system_prompt_content = prompt.content
+
     return resp
 
 

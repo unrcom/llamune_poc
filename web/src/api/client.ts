@@ -211,3 +211,10 @@ export const logsApi = {
     return request<import('../types').Log[]>('GET', `/api/poc/logs${qs ? `?${qs}` : ''}`)
   },
 }
+
+export const systemPromptsApi = {
+  getSystemPrompts: (poc_id: number) =>
+    request<import('../types').SystemPrompt[]>('GET', `/api/poc/system-prompts/poc/${poc_id}`),
+  createSystemPrompt: (poc_id: number, content: string) =>
+    request<import('../types').SystemPrompt>('POST', `/api/poc/system-prompts/poc/${poc_id}`, { content }),
+}

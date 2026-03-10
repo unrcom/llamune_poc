@@ -23,7 +23,7 @@ export function HomePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">チューニング</h1>
+      <h1 className="text-2xl font-bold">チューニング対象一覧</h1>
 
       {pocs.length === 0 ? (
         <p className="text-muted-foreground">チューニング対象が登録されていません。設定画面から作成してください。</p>

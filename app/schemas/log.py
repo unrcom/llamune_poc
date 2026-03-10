@@ -31,6 +31,8 @@ class LogResponse(BaseModel):
     status: int
     memo: Optional[str] = None
     dataset_ids: List[int] = []
+    system_prompt_version: Optional[int] = None
+    system_prompt_content: Optional[str] = None
 
     class Config:
         from_attributes = True
