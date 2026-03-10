@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { api } from '@/api/client'
-import type { Poc, Model } from '@/types'
+import { api, datasetsApi } from '@/api/client'
+import type { Poc, Model, Dataset } from '@/types'
 
 export function SetupPage() {
   const [pocs, setPocs] = useState<Poc[]>([])
   const [models, setModels] = useState<Model[]>([])
+  const [datasets, setDatasets] = useState<Dataset[]>([])
   const [pocsLoading, setPocsLoading] = useState(true)
   const [pocsError, setPocsError] = useState('')
 
@@ -31,15 +32,27 @@ export function SetupPage() {
   const [savingPoc, setSavingPoc] = useState(false)
   const [savePocError, setSavePocError] = useState('')
 
+  const [newDatasetName, setNewDatasetName] = useState('')
+  const [newDatasetDesc, setNewDatasetDesc] = useState('')
+  const [creatingDataset, setCreatingDataset] = useState(false)
+  const [createDatasetError, setCreateDatasetError] = useState('')
+  const [editingDatasetId, setEditingDatasetId] = useState<number | null>(null)
+  const [editDatasetName, setEditDatasetName] = useState('')
+  const [editDatasetDesc, setEditDatasetDesc] = useState('')
+  const [savingDataset, setSavingDataset] = useState(false)
+
   useEffect(() => { fetchAll() }, [])
 
   async function fetchAll() {
     setPocsLoading(true)
     setPocsError('')
     try {
-      const [pocsRes, modelsRes] = await Promise.all([api.getPocs(), api.getModels()])
+      const [pocsRes, modelsRes, datasetsRes] = await Promise.all([
+        api.getPocs(), api.getModels(), datasetsApi.getDatasets()
+      ])
       setPocs(pocsRes)
       setModels(modelsRes)
+      setDatasets(datasetsRes)
     } catch (e) {
       setPocsError(e instanceof Error ? e.message : 'データの取得に失敗しました')
     } finally {
@@ -61,7 +74,7 @@ export function SetupPage() {
       setNewPocName(''); setNewPocDomain(''); setNewPocModelId(''); setNewPocPrompt('')
       await fetchAll()
     } catch (e) {
-      setCreatePocError(e instanceof Error ? e.message : 'PoC作成に失敗しました')
+      setCreatePocError(e instanceof Error ? e.message : 'チューニング対象作成に失敗しました')
     } finally {
       setCreatingPoc(false)
     }
@@ -89,9 +102,53 @@ export function SetupPage() {
       setEditingPocId(null)
       await fetchAll()
     } catch (e) {
-      setSavePocError(e instanceof Error ? e.message : 'PoC更新に失敗しました')
+      setSavePocError(e instanceof Error ? e.message : 'チューニング対象更新に失敗しました')
     } finally {
       setSavingPoc(false)
+    }
+  }
+
+  async function handleCreateDataset() {
+    if (!newDatasetName.trim()) return
+    setCreatingDataset(true)
+    setCreateDatasetError('')
+    try {
+      await datasetsApi.createUserDataset({
+        name: newDatasetName.trim(),
+        description: newDatasetDesc.trim() || undefined,
+      })
+      setNewDatasetName(''); setNewDatasetDesc('')
+      await fetchAll()
+    } catch (e) {
+      setCreateDatasetError(e instanceof Error ? e.message : 'データセット作成に失敗しました')
+    } finally {
+      setCreatingDataset(false)
+    }
+  }
+
+  async function handleSaveDataset(id: number) {
+    setSavingDataset(true)
+    try {
+      await datasetsApi.updateDataset(id, {
+        name: editDatasetName.trim() || undefined,
+        description: editDatasetDesc.trim() || undefined,
+      })
+      setEditingDatasetId(null)
+      await fetchAll()
+    } catch (e) {
+      setCreateDatasetError(e instanceof Error ? e.message : 'データセット更新に失敗しました')
+    } finally {
+      setSavingDataset(false)
+    }
+  }
+
+  async function handleDeleteDataset(id: number) {
+    if (!confirm('このデータセットを削除しますか？')) return
+    try {
+      await datasetsApi.deleteDataset(id)
+      await fetchAll()
+    } catch (e) {
+      setCreateDatasetError(e instanceof Error ? e.message : 'データセット削除に失敗しました')
     }
   }
 
@@ -99,14 +156,15 @@ export function SetupPage() {
     <div className="space-y-8">
       <h1 className="text-2xl font-bold">設定</h1>
 
+      {/* チューニング対象管理 */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">PoC管理</h2>
+        <h2 className="text-xl font-semibold">チューニング対象管理</h2>
         {pocsLoading ? (
           <p className="text-muted-foreground text-sm">読み込み中...</p>
         ) : pocsError ? (
           <p className="text-sm text-destructive">{pocsError}</p>
         ) : pocs.length === 0 ? (
-          <p className="text-muted-foreground text-sm">PoCが登録されていません</p>
+          <p className="text-muted-foreground text-sm">チューニング対象が登録されていません</p>
         ) : (
           <div className="space-y-3">
             {pocs.map((poc) => (
@@ -171,7 +229,7 @@ export function SetupPage() {
         )}
 
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-base">新規PoC作成</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-base">新規チューニング対象作成</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="flex gap-3">
               <div className="space-y-1 flex-1">
@@ -200,7 +258,7 @@ export function SetupPage() {
             </div>
             {createPocError && <p className="text-sm text-destructive">{createPocError}</p>}
             <Button onClick={handleCreatePoc} disabled={creatingPoc || !newPocName.trim() || !newPocDomain.trim()}>
-              {creatingPoc ? '作成中...' : 'PoCを作成'}
+              {creatingPoc ? '作成中...' : '作成'}
             </Button>
           </CardContent>
         </Card>
@@ -208,6 +266,7 @@ export function SetupPage() {
 
       <Separator />
 
+      {/* モデル一覧 */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">モデル一覧</h2>
         <p className="text-xs text-muted-foreground">モデルの登録はDBに直接行ってください。</p>
@@ -231,6 +290,73 @@ export function SetupPage() {
             ))}
           </div>
         )}
+      </div>
+
+      <Separator />
+
+      {/* データセット管理 */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">データセット管理</h2>
+        {datasets.length === 0 ? (
+          <p className="text-muted-foreground text-sm">データセットが登録されていません</p>
+        ) : (
+          <div className="space-y-2">
+            {datasets.map((d) => (
+              <Card key={d.id}>
+                <CardContent className="px-4 py-3">
+                  {editingDatasetId === d.id ? (
+                    <div className="space-y-2">
+                      <Input value={editDatasetName} onChange={(e) => setEditDatasetName(e.target.value)} placeholder="名前" />
+                      <Input value={editDatasetDesc} onChange={(e) => setEditDatasetDesc(e.target.value)} placeholder="説明（任意）" />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleSaveDataset(d.id)} disabled={savingDataset}>
+                          {savingDataset ? '保存中...' : '保存'}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingDatasetId(null)}>キャンセル</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-sm">
+                        <span className="font-medium">{d.name}</span>
+                        {d.is_system && <Badge variant="secondary" className="ml-2 text-xs">システム</Badge>}
+                        {d.description && <span className="text-muted-foreground ml-2 text-xs">{d.description}</span>}
+                      </div>
+                      {!d.is_system && (
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" onClick={() => {
+                            setEditingDatasetId(d.id)
+                            setEditDatasetName(d.name)
+                            setEditDatasetDesc(d.description ?? '')
+                          }}>編集</Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDeleteDataset(d.id)}>削除</Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base">新規データセット作成</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">名前 *</Label>
+              <Input placeholder="例：勘定科目Q&A" value={newDatasetName} onChange={(e) => setNewDatasetName(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">説明</Label>
+              <Input placeholder="任意" value={newDatasetDesc} onChange={(e) => setNewDatasetDesc(e.target.value)} />
+            </div>
+            {createDatasetError && <p className="text-sm text-destructive">{createDatasetError}</p>}
+            <Button onClick={handleCreateDataset} disabled={creatingDataset || !newDatasetName.trim()}>
+              {creatingDataset ? '作成中...' : '作成'}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

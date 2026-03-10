@@ -6,8 +6,8 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { api, chatStream } from '@/api/client'
-import type { Log } from '@/types'
+import { api, chatStream, logsApi, datasetsApi } from '@/api/client'
+import type { Log, Dataset } from '@/types'
 
 const EVALUATION_LABELS: Record<number, string> = { 1: '良い', 2: '不十分', 3: '間違い' }
 const EVALUATION_VARIANTS: Record<number, 'default' | 'secondary' | 'destructive'> = {
@@ -20,18 +20,27 @@ interface EvalFormState {
   reason: string
   correct_answer: string
   priority: string
+  dataset_ids: number[]
 }
 
 export function ChatPage() {
-  const { sessionId } = useParams<{ sessionId: string }>()
+  const { sessionId: sessionIdParam } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
   const location = useLocation()
-  const app_name = (location.state as { app_name?: string })?.app_name ?? ""
+  const state = location.state as { app_name?: string; poc_id?: number; system_prompt?: string } | null
+  const app_name = state?.app_name ?? ''
+  const poc_id = state?.poc_id
+  const initial_system_prompt = state?.system_prompt ?? ''
+
+  const [sessionId, setSessionId] = useState<number | null>(
+    sessionIdParam ? Number(sessionIdParam) : null
+  )
   const [question, setQuestion] = useState('')
   const [logs, setLogs] = useState<Log[]>([])
-  const [loading, setLoading] = useState(true)
+  const [datasets, setDatasets] = useState<Dataset[]>([])
+  const [loading, setLoading] = useState(!!sessionIdParam)
   const [sending, setSending] = useState(false)
-  const [ending, setEnding] = useState(false)
+  const [ending] = useState(false)
   const [error, setError] = useState('')
   const [streamingAnswer, setStreamingAnswer] = useState('')
   const [evalForms, setEvalForms] = useState<Record<number, EvalFormState>>({})
@@ -39,44 +48,58 @@ export function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    async function fetchSessionLogs() {
-      if (!sessionId) return
+    async function fetchInitial() {
       try {
-        const allLogs = await api.getLogs()
-        const sessionLogs = allLogs.filter((log) => log.session_id === Number(sessionId))
-        setLogs(sessionLogs)
+        const [allLogs, datasetsRes] = await Promise.all([
+          sessionIdParam ? logsApi.getLogs() : Promise.resolve([]),
+          datasetsApi.getDatasets(),
+        ])
+        if (sessionIdParam) {
+          setLogs((allLogs as Log[]).filter((log) => log.session_id === Number(sessionIdParam)))
+        }
+        setDatasets(datasetsRes)
       } catch {
         // ログ取得失敗は無視
       } finally {
         setLoading(false)
       }
     }
-    fetchSessionLogs()
-  }, [sessionId])
+    fetchInitial()
+  }, [sessionIdParam])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logs, streamingAnswer])
 
+  async function refreshLogs(sid?: number) {
+    const id = sid ?? sessionId
+    if (!id) return
+    const allLogs = await logsApi.getLogs()
+    setLogs(allLogs.filter((log) => log.session_id === id))
+  }
+
   async function handleSend() {
-    if (!question.trim() || !sessionId) return
+    if (!question.trim()) return
     setSending(true)
     setError('')
     const q = question.trim()
     setQuestion('')
     setStreamingAnswer('')
-
     try {
+      let currentSessionId = sessionId
+      // 初回メッセージ時にセッションを作成
+      if (!currentSessionId) {
+        if (!poc_id) throw new Error('チューニング対象が指定されていません')
+        const session = await api.startSession(poc_id, initial_system_prompt)
+        currentSessionId = session.session_id
+        setSessionId(currentSessionId)
+      }
       let answer = ''
-      await chatStream(Number(sessionId), app_name, q, (token) => {
+      await chatStream(currentSessionId, app_name, q, (token) => {
         answer += token
         setStreamingAnswer(answer)
       })
-
-      // ストリーミング完了後、ログ一覧を再取得して最新のlog_idを反映
-      const allLogs = await api.getLogs()
-      const sessionLogs = allLogs.filter((log) => log.session_id === Number(sessionId))
-      setLogs(sessionLogs)
+      await refreshLogs(currentSessionId)
       setStreamingAnswer('')
     } catch (e) {
       setError(e instanceof Error ? e.message : '送信に失敗しました')
@@ -87,22 +110,36 @@ export function ChatPage() {
   }
 
   async function handleEndSession() {
+    if (poc_id) {
+      navigate(`/tuning/${poc_id}`)
+    } else {
+      navigate('/')
+    }
     if (!sessionId) return
-    setEnding(true)
     try {
-      await api.endSession(Number(sessionId))
-      navigate('/logs')
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'セッション終了に失敗しました')
-      setEnding(false)
+      await api.endSession(sessionId)
+    } catch {
+      // 終了失敗は無視
     }
   }
 
-  function handleEvalChange(logId: number, field: keyof EvalFormState, value: string) {
+  function handleEvalChange(logId: number, field: keyof EvalFormState, value: string | number[]) {
     setEvalForms((prev) => ({
       ...prev,
-      [logId]: { ...{ evaluation: '', reason: '', correct_answer: '', priority: '' }, ...prev[logId], [field]: value },
+      [logId]: {
+        ...{ evaluation: '', reason: '', correct_answer: '', priority: '', dataset_ids: [] },
+        ...prev[logId],
+        [field]: value,
+      },
     }))
+  }
+
+  function toggleDataset(logId: number, datasetId: number) {
+    const current = evalForms[logId]?.dataset_ids ?? []
+    const next = current.includes(datasetId)
+      ? current.filter((id) => id !== datasetId)
+      : [...current, datasetId]
+    handleEvalChange(logId, 'dataset_ids', next)
   }
 
   async function handleSaveEval(logId: number) {
@@ -110,16 +147,14 @@ export function ChatPage() {
     if (!form?.evaluation) return
     setSavingEval((prev) => ({ ...prev, [logId]: true }))
     try {
-      const updated = await api.updateLog(logId, {
+      await api.updateLog(logId, {
         evaluation: Number(form.evaluation),
         reason: form.reason || undefined,
         correct_answer: form.correct_answer || undefined,
         priority: form.priority ? Number(form.priority) : undefined,
+        dataset_ids: form.dataset_ids,
       })
-      // ログを更新
-      const allLogs = await api.getLogs()
-      const sessionLogs = allLogs.filter((log) => log.session_id === Number(sessionId))
-      setLogs(sessionLogs)
+      await refreshLogs()
       setEvalForms((prev) => { const next = { ...prev }; delete next[logId]; return next })
     } catch (e) {
       setError(e instanceof Error ? e.message : '評価の保存に失敗しました')
@@ -143,9 +178,9 @@ export function ChatPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">チャット</h1>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">セッション #{sessionId}</span>
+          {sessionId && <span className="text-sm text-muted-foreground">チャット #{sessionId}</span>}
           <Button variant="outline" size="sm" onClick={handleEndSession} disabled={ending}>
-            {ending ? '終了中...' : 'セッション終了'}
+            {ending ? '終了中...' : 'チャット終了'}
           </Button>
         </div>
       </div>
@@ -167,13 +202,19 @@ export function ChatPage() {
               </div>
             </div>
             {log.evaluation ? (
-              <div className="flex items-center gap-2 pl-1">
+              <div className="flex items-center gap-2 pl-1 flex-wrap">
                 <Badge variant={EVALUATION_VARIANTS[log.evaluation]}>
                   {EVALUATION_LABELS[log.evaluation]}
                 </Badge>
                 {log.priority && (
                   <Badge variant="outline">優先度: {PRIORITY_LABELS[log.priority]}</Badge>
                 )}
+                {log.dataset_ids.map((did) => {
+                  const d = datasets.find((ds) => ds.id === did)
+                  return d ? (
+                    <span key={did} className="text-xs bg-muted px-1.5 py-0.5 rounded">{d.name}</span>
+                  ) : null
+                })}
               </div>
             ) : (
               <Card className="border-dashed">
@@ -233,6 +274,29 @@ export function ChatPage() {
                       onChange={(e) => handleEvalChange(log.id, 'correct_answer', e.target.value)}
                     />
                   </div>
+                  {datasets.length > 0 && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">データセットタグ</Label>
+                      <div className="flex gap-1 flex-wrap">
+                        {datasets.map((d) => {
+                          const selected = evalForms[log.id]?.dataset_ids?.includes(d.id) ?? false
+                          return (
+                            <button
+                              key={d.id}
+                              onClick={() => toggleDataset(log.id, d.id)}
+                              className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+                                selected
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'text-muted-foreground border-border hover:bg-muted'
+                              }`}
+                            >
+                              {d.name}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                   <Button
                     size="sm"
                     onClick={() => handleSaveEval(log.id)}
@@ -246,7 +310,6 @@ export function ChatPage() {
           </div>
         ))}
 
-        {/* ストリーミング中の表示 */}
         {streamingAnswer && (
           <div className="space-y-2">
             <div className="flex justify-start">

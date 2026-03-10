@@ -44,7 +44,6 @@ def post_chat(
             session_id=session.id,
             question=chat_in.question,
             answer=answer,
-            evaluation=1,
         )
         db.add(log)
         db.commit()

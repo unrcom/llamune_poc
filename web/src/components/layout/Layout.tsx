@@ -25,8 +25,7 @@ export function Layout({ children, onLogout }: LayoutProps) {
   const { instances, connected } = useMonkeyStatus()
 
   const navItems = [
-    { path: '/', label: 'ホーム' },
-    { path: '/logs', label: 'ログ一覧' },
+    { path: '/', label: 'チューニング対象' },
     { path: '/setup', label: '設定' },
   ]
 
@@ -36,7 +35,7 @@ export function Layout({ children, onLogout }: LayoutProps) {
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
             <Link to="/" className="font-bold text-lg tracking-tight shrink-0">
-              llamune_poc
+              llamune
             </Link>
             {connected && instances.length > 0 ? (
               <div className="flex items-center gap-1 overflow-x-auto">

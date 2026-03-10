@@ -26,6 +26,7 @@ class PocResponse(BaseModel):
     model_name: Optional[str] = None
     model_version: Optional[int] = None
     default_system_prompt: Optional[str] = None
+    session_count: int = 0
     created_at: datetime
 
     class Config:

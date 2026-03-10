@@ -4,6 +4,7 @@ export interface Model {
   version: number
   base_model: string
   description: string | null
+  session_count: number
   created_at: string
 }
 
@@ -16,10 +17,12 @@ export interface Poc {
   model_name: string | null
   model_version: number | null
   default_system_prompt: string | null
+  session_count: number
   created_at: string
 }
 
 export interface SessionResponse {
+  app_name: string
   session_id: number
   poc_name: string
   model_name: string
@@ -52,6 +55,7 @@ export interface Log {
   priority: number | null
   status: number
   memo: string | null
+  dataset_ids: number[]
 }
 
 export type Evaluation = 1 | 2 | 3
@@ -65,4 +69,13 @@ export interface SessionDetail {
   system_prompt: string
   started_at: string
   ended_at: string | null
+}
+
+export interface Dataset {
+  id: number
+  name: string
+  description: string | null
+  is_system: boolean
+  created_by: number | null
+  created_at: string
 }

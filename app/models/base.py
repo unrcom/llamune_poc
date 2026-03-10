@@ -61,7 +61,7 @@ class ConversationLog(Base):
     question = Column(Text, nullable=False)
     answer = Column(Text, nullable=False)
     timestamp = Column(TIMESTAMP, server_default=func.now(), nullable=False)
-    evaluation = Column(SmallInteger, nullable=False)
+    evaluation = Column(SmallInteger, nullable=True)
     reason = Column(Text)
     correct_answer = Column(Text)
     priority = Column(SmallInteger)
@@ -75,3 +75,19 @@ class RefreshToken(Base):
     token = Column(String(255), nullable=False, unique=True)
     expires_at = Column(TIMESTAMP, nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+
+
+class Dataset(Base):
+    __tablename__ = "datasets"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text)
+    is_system = Column(Boolean, nullable=False, default=False)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+
+
+class ConversationLogDataset(Base):
+    __tablename__ = "conversation_log_datasets"
+    log_id = Column(Integer, ForeignKey("conversation_logs.id"), primary_key=True)
+    dataset_id = Column(Integer, ForeignKey("datasets.id"), primary_key=True)

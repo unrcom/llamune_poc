@@ -182,6 +182,32 @@ export const api = {
       reason?: string
       correct_answer?: string
       priority?: number
+      dataset_ids?: number[]
     }
   ) => request<{ log_id: number; updated_at: string }>('PUT', `/api/poc/logs/${id}`, data),
+}
+
+// datasets追加分（client.tsのapi objectを拡張するため別途export）
+export const datasetsApi = {
+  getDatasets: () =>
+    request<import('../types').Dataset[]>('GET', '/api/poc/datasets'),
+  createSystemDataset: (data: { name: string; description?: string }) =>
+    request<import('../types').Dataset>('POST', '/api/poc/datasets', data),
+  createUserDataset: (data: { name: string; description?: string }) =>
+    request<import('../types').Dataset>('POST', '/api/poc/datasets/user', data),
+  updateDataset: (id: number, data: { name?: string; description?: string }) =>
+    request<import('../types').Dataset>('PUT', `/api/poc/datasets/${id}`, data),
+  deleteDataset: (id: number) =>
+    request<void>('DELETE', `/api/poc/datasets/${id}`),
+}
+
+export const logsApi = {
+  getLogs: (params?: { poc_id?: number; keyword?: string; dataset_id?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.poc_id !== undefined) query.set('poc_id', String(params.poc_id))
+    if (params?.keyword) query.set('keyword', params.keyword)
+    if (params?.dataset_id !== undefined) query.set('dataset_id', String(params.dataset_id))
+    const qs = query.toString()
+    return request<import('../types').Log[]>('GET', `/api/poc/logs${qs ? `?${qs}` : ''}`)
+  },
 }
