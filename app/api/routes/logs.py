@@ -81,13 +81,15 @@ def update_log(
     if not log:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Log not found")
 
-    if log_in.evaluation not in [1, 2, 3]:
+    if log_in.evaluation is not None and log_in.evaluation not in [1, 2, 3]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="evaluation must be 1, 2 or 3")
 
     log.evaluation = log_in.evaluation
-    log.reason = log_in.reason
-    log.correct_answer = log_in.correct_answer
+    log.correct_parts = log_in.correct_parts
+    log.incorrect_parts = log_in.incorrect_parts
+    log.missing_parts = log_in.missing_parts
     log.priority = log_in.priority
+    log.training_role = log_in.training_role
     log.memo = log_in.memo
 
     if log_in.dataset_ids is not None:

@@ -59,15 +59,19 @@ class ConversationLog(Base):
     __tablename__ = "conversation_logs"
     id = Column(Integer, primary_key=True)
     session_id = Column(Integer, ForeignKey("sessions.id"), nullable=False)
+    type = Column(SmallInteger, nullable=False, default=1)
     question = Column(Text, nullable=False)
-    answer = Column(Text, nullable=False)
+    answer = Column(Text, nullable=True)
+    expected_answer = Column(Text, nullable=True)
     timestamp = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     evaluation = Column(SmallInteger, nullable=True)
-    reason = Column(Text)
-    correct_answer = Column(Text)
-    priority = Column(SmallInteger)
+    correct_parts = Column(Text, nullable=True)
+    incorrect_parts = Column(Text, nullable=True)
+    missing_parts = Column(Text, nullable=True)
+    priority = Column(SmallInteger, nullable=True)
+    training_role = Column(SmallInteger, nullable=True)
     status = Column(SmallInteger, nullable=False, default=1)
-    memo = Column(Text)
+    memo = Column(Text, nullable=True)
 
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"

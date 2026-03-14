@@ -17,8 +17,9 @@ const PRIORITY_LABELS: Record<number, string> = { 1: '高', 2: '中', 3: '低' }
 
 interface EvalFormState {
   evaluation: string
-  reason: string
-  correct_answer: string
+  correct_parts: string
+  incorrect_parts: string
+  missing_parts: string
   priority: string
   dataset_ids: number[]
 }
@@ -27,7 +28,7 @@ export function ChatPage() {
   const { sessionId: sessionIdParam } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
   const location = useLocation()
-  const state = location.state as { app_name?: string; poc_id?: number; system_prompt?: string; edit_log_id?: number; evaluation?: number; reason?: string; correct_answer?: string; priority?: number; dataset_ids?: number[] } | null
+  const state = location.state as { app_name?: string; poc_id?: number; system_prompt?: string; edit_log_id?: number; evaluation?: number; correct_parts?: string; incorrect_parts?: string; missing_parts?: string; priority?: number; dataset_ids?: number[] } | null
   const app_name = state?.app_name ?? ''
   const poc_id = state?.poc_id
   const initial_system_prompt = state?.system_prompt ?? ''
@@ -48,8 +49,9 @@ export function ChatPage() {
       return {
         [state.edit_log_id]: {
           evaluation: state.evaluation ? String(state.evaluation) : '',
-          reason: state.reason ?? '',
-          correct_answer: state.correct_answer ?? '',
+          correct_parts: state.correct_parts ?? '',
+          incorrect_parts: state.incorrect_parts ?? '',
+          missing_parts: state.missing_parts ?? '',
           priority: state.priority ? String(state.priority) : '',
           dataset_ids: state.dataset_ids ?? [],
         }
@@ -68,7 +70,7 @@ export function ChatPage() {
           datasetsApi.getDatasets(),
         ])
         if (sessionIdParam) {
-          setLogs((allLogs as Log[]).filter((log) => log.session_id === Number(sessionIdParam)))
+          setLogs(allLogs as Log[])
         }
         setDatasets(datasetsRes)
       } catch {
@@ -88,7 +90,7 @@ export function ChatPage() {
     const id = sid ?? sessionId
     if (!id) return
     const allLogs = await logsApi.getLogs()
-    setLogs(allLogs.filter((log) => log.session_id === id))
+    setLogs(allLogs)
   }
 
   async function handleSend() {
@@ -140,7 +142,7 @@ export function ChatPage() {
     setEvalForms((prev) => ({
       ...prev,
       [logId]: {
-        ...{ evaluation: '', reason: '', correct_answer: '', priority: '', dataset_ids: [] },
+        ...{ evaluation: '', correct_parts: '', incorrect_parts: '', missing_parts: '', priority: '', dataset_ids: [] },
         ...prev[logId],
         [field]: value,
       },
@@ -162,8 +164,9 @@ export function ChatPage() {
     try {
       await api.updateLog(logId, {
         evaluation: Number(form.evaluation),
-        reason: form.reason || undefined,
-        correct_answer: form.correct_answer || undefined,
+        correct_parts: form.correct_parts || undefined,
+        incorrect_parts: form.incorrect_parts || undefined,
+        missing_parts: form.missing_parts || undefined,
         priority: form.priority ? Number(form.priority) : undefined,
         dataset_ids: form.dataset_ids,
       })
@@ -198,6 +201,20 @@ export function ChatPage() {
         </div>
       </div>
 
+      <div className="sticky top-0 bg-background pb-2 space-y-2 z-10">
+        <Textarea
+          placeholder="質問を入力（Cmd+Enter で送信）"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={handleKeyDown}
+          rows={3}
+          disabled={sending}
+        />
+        <Button onClick={handleSend} disabled={sending || !question.trim()} className="w-full">
+          {sending ? '回答待ち...' : '送信'}
+        </Button>
+      </div>
+
       <div className="space-y-4">
         {logs.length === 0 && !streamingAnswer && (
           <p className="text-muted-foreground text-sm">質問を入力してチャットを開始してください</p>
@@ -214,11 +231,15 @@ export function ChatPage() {
                 {log.answer}
               </div>
             </div>
-            {log.evaluation && !evalForms[log.id] ? (
+            {log.evaluation && !evalForms[log.id] || (!log.evaluation && !evalForms[log.id]) ? (
               <div className="flex items-center gap-2 pl-1 flex-wrap">
-                <Badge variant={EVALUATION_VARIANTS[log.evaluation]}>
-                  {EVALUATION_LABELS[log.evaluation]}
-                </Badge>
+                {log.evaluation ? (
+                  <Badge variant={EVALUATION_VARIANTS[log.evaluation]}>
+                    {EVALUATION_LABELS[log.evaluation]}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">未評価</Badge>
+                )}
                 {log.priority && (
                   <Badge variant="outline">優先度: {PRIORITY_LABELS[log.priority]}</Badge>
                 )}
@@ -234,8 +255,9 @@ export function ChatPage() {
                     ...prev,
                     [log.id]: {
                       evaluation: String(log.evaluation),
-                      reason: log.reason ?? '',
-                      correct_answer: log.correct_answer ?? '',
+                      correct_parts: log.correct_parts ?? '',
+                      incorrect_parts: log.incorrect_parts ?? '',
+                      missing_parts: log.missing_parts ?? '',
                       priority: log.priority ? String(log.priority) : '',
                       dataset_ids: log.dataset_ids,
                     }
@@ -285,21 +307,30 @@ export function ChatPage() {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">理由</Label>
+                    <Label className="text-xs">正しい部分</Label>
                     <Textarea
                       className="text-xs min-h-[60px]"
-                      placeholder="評価の理由（任意）"
-                      value={evalForms[log.id]?.reason ?? ''}
-                      onChange={(e) => handleEvalChange(log.id, 'reason', e.target.value)}
+                      placeholder="モデル回答の正しい部分（任意）"
+                      value={evalForms[log.id]?.correct_parts ?? ''}
+                      onChange={(e) => handleEvalChange(log.id, 'correct_parts', e.target.value)}
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">正解</Label>
+                    <Label className="text-xs">誤っている部分</Label>
                     <Textarea
                       className="text-xs min-h-[60px]"
-                      placeholder="正しい回答（任意）"
-                      value={evalForms[log.id]?.correct_answer ?? ''}
-                      onChange={(e) => handleEvalChange(log.id, 'correct_answer', e.target.value)}
+                      placeholder="モデル回答の誤っている部分（任意）"
+                      value={evalForms[log.id]?.incorrect_parts ?? ''}
+                      onChange={(e) => handleEvalChange(log.id, 'incorrect_parts', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">不足している部分</Label>
+                    <Textarea
+                      className="text-xs min-h-[60px]"
+                      placeholder="モデル回答の不足している部分（任意）"
+                      value={evalForms[log.id]?.missing_parts ?? ''}
+                      onChange={(e) => handleEvalChange(log.id, 'missing_parts', e.target.value)}
                     />
                   </div>
                   {datasets.length > 0 && (
@@ -362,19 +393,6 @@ export function ChatPage() {
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <div className="sticky bottom-0 bg-background pt-2 pb-4 space-y-2">
-        <Textarea
-          placeholder="質問を入力（Cmd+Enter で送信）"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          onKeyDown={handleKeyDown}
-          rows={3}
-          disabled={sending}
-        />
-        <Button onClick={handleSend} disabled={sending || !question.trim()} className="w-full">
-          {sending ? '回答待ち...' : '送信'}
-        </Button>
-      </div>
     </div>
   )
 }

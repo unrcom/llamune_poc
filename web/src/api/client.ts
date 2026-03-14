@@ -179,9 +179,12 @@ export const api = {
     id: number,
     data: {
       evaluation?: number
-      reason?: string
-      correct_answer?: string
+      correct_parts?: string
+      incorrect_parts?: string
+      missing_parts?: string
       priority?: number
+      training_role?: number
+      memo?: string
       dataset_ids?: number[]
     }
   ) => request<{ log_id: number; updated_at: string }>('PUT', `/api/poc/logs/${id}`, data),

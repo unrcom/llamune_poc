@@ -28,15 +28,25 @@ def create_session(
         SystemPrompt.poc_id == poc.id
     ).order_by(SystemPrompt.version.desc()).first()
 
-    session = SessionModel(
-        user_id=current_user.id,
-        poc_id=poc.id,
-        system_prompt=session_in.system_prompt or poc.default_system_prompt,
-        system_prompt_id=latest_prompt.id if latest_prompt else None,
-    )
-    db.add(session)
-    db.commit()
-    db.refresh(session)
+    if not latest_prompt:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="システムプロンプトが設定されていません。チューニング詳細画面から登録してください。")
+
+    # 既存セッションがあればそれを使う（poc_idごとに1セッション）
+    existing_session = db.query(SessionModel).filter(
+        SessionModel.poc_id == poc.id
+    ).first()
+    if existing_session:
+        session = existing_session
+    else:
+        session = SessionModel(
+            user_id=current_user.id,
+            poc_id=poc.id,
+            system_prompt=session_in.system_prompt or poc.default_system_prompt,
+            system_prompt_id=latest_prompt.id if latest_prompt else None,
+        )
+        db.add(session)
+        db.commit()
+        db.refresh(session)
 
     return {
         "session_id": session.id,

@@ -46,13 +46,17 @@ export interface ChatResponse {
 export interface Log {
   id: number
   session_id: number
+  type: number
   question: string
-  answer: string
+  answer: string | null
+  expected_answer: string | null
   timestamp: string
   evaluation: number | null
-  reason: string | null
-  correct_answer: string | null
+  correct_parts: string | null
+  incorrect_parts: string | null
+  missing_parts: string | null
   priority: number | null
+  training_role: number | null
   status: number
   memo: string | null
   dataset_ids: number[]
@@ -62,7 +66,8 @@ export interface Log {
 
 export type Evaluation = 1 | 2 | 3
 export type Priority = 1 | 2 | 3
-export type Status = 1 | 2 | 3
+export type TrainingRole = 1 | 2 | 3
+export type Status = 1 | 2 | 3 | 4 | 5 | 6
 
 export interface SessionDetail {
   session_id: number

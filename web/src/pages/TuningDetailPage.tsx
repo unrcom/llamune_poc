@@ -57,8 +57,9 @@ function LogItem({ log, datasets, pocId }: { log: import('@/types').Log; dataset
                   <span className="text-xs bg-muted px-1.5 py-0.5 rounded">優先度: {PRIORITY_LABEL[log.priority]}</span>
                 )}
               </div>
-              {log.reason && <p className="text-xs text-muted-foreground">理由: {log.reason}</p>}
-              {log.correct_answer && <p className="text-xs text-muted-foreground">正解: {log.correct_answer}</p>}
+              {log.correct_parts && <p className="text-xs text-muted-foreground">正しい部分: {log.correct_parts}</p>}
+              {log.incorrect_parts && <p className="text-xs text-muted-foreground">誤っている部分: {log.incorrect_parts}</p>}
+              {log.missing_parts && <p className="text-xs text-muted-foreground">不足している部分: {log.missing_parts}</p>}
               {log.memo && <p className="text-xs text-muted-foreground">メモ: {log.memo}</p>}
             </div>
           )}
@@ -88,7 +89,7 @@ function LogItem({ log, datasets, pocId }: { log: import('@/types').Log; dataset
           )}
           <button
             className="text-xs text-muted-foreground hover:text-foreground underline"
-            onClick={() => navigate(`/chat/${log.session_id}`, { state: { poc_id: pocId, edit_log_id: log.id, evaluation: log.evaluation, reason: log.reason, correct_answer: log.correct_answer, priority: log.priority, dataset_ids: log.dataset_ids } })}
+            onClick={() => navigate(`/chat/${log.session_id}`, { state: { poc_id: pocId, edit_log_id: log.id, evaluation: log.evaluation, correct_parts: log.correct_parts, incorrect_parts: log.incorrect_parts, missing_parts: log.missing_parts, priority: log.priority, dataset_ids: log.dataset_ids } })}
           >
             編集
           </button>
@@ -173,9 +174,10 @@ export function TuningDetailPage() {
     }
   }
 
-  function handleStartSession() {
+  async function handleStartSession() {
     if (!poc) return
-    navigate('/chat', { state: { poc_id: poc.id, app_name: poc.app_name, system_prompt: systemPrompt } })
+    const session = await api.startSession(poc.id, systemPrompt)
+    navigate(`/chat/${session.session_id}`, { state: { poc_id: poc.id, app_name: poc.app_name, system_prompt: systemPrompt } })
   }
 
   if (!poc) return <p className="text-muted-foreground">読み込み中...</p>
@@ -231,7 +233,7 @@ export function TuningDetailPage() {
             onClick={handleSavePrompt}
             disabled={promptSaving}
           >
-            {promptSaved ? '保存しました' : promptSaving ? '保存中...' : '新バージョンとして保存'}
+            {promptSaved ? '保存しました' : promptSaving ? '保存中...' : systemPromptHistory.length === 0 ? 'システムプロンプトとして登録' : '新バージョンとして保存'}
           </Button>
           {systemPromptHistory.length > 0 && (
             <div className="mt-3 space-y-1">

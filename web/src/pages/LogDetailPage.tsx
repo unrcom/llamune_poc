@@ -28,8 +28,9 @@ export function LogDetailPage() {
   const [saved, setSaved] = useState(false)
 
   const [evaluation, setEvaluation] = useState('')
-  const [reason, setReason] = useState('')
-  const [correctAnswer, setCorrectAnswer] = useState('')
+  const [correctParts, setCorrectParts] = useState('')
+  const [incorrectParts, setIncorrectParts] = useState('')
+  const [missingParts, setMissingParts] = useState('')
   const [priority, setPriority] = useState('')
 
   useEffect(() => {
@@ -40,8 +41,9 @@ export function LogDetailPage() {
         const res = await api.getLog(Number(id))
         setLog(res)
         setEvaluation(res.evaluation ? String(res.evaluation) : '')
-        setReason(res.reason ?? '')
-        setCorrectAnswer(res.correct_answer ?? '')
+        setCorrectParts(res.correct_parts ?? '')
+        setIncorrectParts(res.incorrect_parts ?? '')
+        setMissingParts(res.missing_parts ?? '')
         setPriority(res.priority ? String(res.priority) : '')
         const sessionRes = await api.getSession(res.session_id)
         setSession(sessionRes)
@@ -61,8 +63,9 @@ export function LogDetailPage() {
     try {
       await api.updateLog(Number(id), {
         evaluation: Number(evaluation),
-        reason: reason || undefined,
-        correct_answer: correctAnswer || undefined,
+        correct_parts: correctParts || undefined,
+        incorrect_parts: incorrectParts || undefined,
+        missing_parts: missingParts || undefined,
         priority: priority ? Number(priority) : undefined,
       })
       const updated = await api.getLog(Number(id))
@@ -179,24 +182,35 @@ export function LogDetailPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="reason">理由</Label>
+          <Label htmlFor="correct-parts">正しい部分</Label>
           <Textarea
-            id="reason"
-            placeholder="評価の理由（任意）"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            id="correct-parts"
+            placeholder="モデル回答の正しい部分（任意）"
+            value={correctParts}
+            onChange={(e) => setCorrectParts(e.target.value)}
             rows={3}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="correct-answer">正解</Label>
+          <Label htmlFor="incorrect-parts">誤っている部分</Label>
           <Textarea
-            id="correct-answer"
-            placeholder="正しい回答（任意）"
-            value={correctAnswer}
-            onChange={(e) => setCorrectAnswer(e.target.value)}
-            rows={4}
+            id="incorrect-parts"
+            placeholder="モデル回答の誤っている部分（任意）"
+            value={incorrectParts}
+            onChange={(e) => setIncorrectParts(e.target.value)}
+            rows={3}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="missing-parts">不足している部分</Label>
+          <Textarea
+            id="missing-parts"
+            placeholder="モデル回答の不足している部分（任意）"
+            value={missingParts}
+            onChange={(e) => setMissingParts(e.target.value)}
+            rows={3}
           />
         </div>
 
