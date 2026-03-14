@@ -221,3 +221,27 @@ export const systemPromptsApi = {
   createSystemPrompt: (poc_id: number, content: string) =>
     request<import('../types').SystemPrompt>('POST', `/api/poc/system-prompts/poc/${poc_id}`, { content }),
 }
+
+export const workflowsApi = {
+  getWorkflows: (poc_id: number) =>
+    request<import('../types').Workflow[]>('GET', `/api/poc/workflows/poc/${poc_id}`),
+  getWorkflow: (id: number) =>
+    request<import('../types').Workflow>('GET', `/api/poc/workflows/${id}`),
+  createWorkflow: (data: {
+    poc_id: number
+    name: string
+    system_prompt_id?: number
+    questions: { order_index: number; question: string; expected_answer?: string }[]
+  }) =>
+    request<import('../types').Workflow>('POST', '/api/poc/workflows', data),
+  updateWorkflow: (id: number, data: {
+    name?: string
+    system_prompt_id?: number
+    questions?: { order_index: number; question: string; expected_answer?: string }[]
+  }) =>
+    request<import('../types').Workflow>('PUT', `/api/poc/workflows/${id}`, data),
+  deleteWorkflow: (id: number) =>
+    request<void>('DELETE', `/api/poc/workflows/${id}`),
+  executeWorkflow: (id: number) =>
+    request<import('../types').Workflow>('POST', `/api/poc/workflows/${id}/execute`),
+}

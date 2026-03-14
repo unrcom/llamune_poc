@@ -4,7 +4,7 @@ import httpx
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import users, models, sessions, chat, logs, pocs, auth, datasets, system_prompts
+from app.api.routes import users, models, sessions, chat, logs, pocs, auth, datasets, system_prompts, workflows
 
 MONKEY_URL = os.getenv("MONKEY_URL", "")
 INSTANCE_ID = os.getenv("INSTANCE_ID", "unnamed")
@@ -121,6 +121,7 @@ app.include_router(logs.router)
 app.include_router(pocs.router)
 app.include_router(datasets.router)
 app.include_router(system_prompts.router)
+app.include_router(workflows.router)
 
 
 @app.get("/health")

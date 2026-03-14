@@ -95,3 +95,24 @@ export interface SystemPrompt {
   created_by: number | null
   created_at: string
 }
+
+export interface WorkflowQuestion {
+  id: number
+  order_index: number
+  question: string
+  expected_answer: string | null
+  log_id: number | null
+  status: number  // 1=pending 2=running 3=done 4=error
+}
+
+export interface Workflow {
+  id: number
+  poc_id: number
+  name: string
+  system_prompt_id: number | null
+  status: number  // 1=draft 2=running 3=done 4=error
+  created_by: number | null
+  created_at: string
+  executed_at: string | null
+  questions: WorkflowQuestion[]
+}

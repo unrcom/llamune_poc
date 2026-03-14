@@ -106,3 +106,26 @@ class SystemPrompt(Base):
     version = Column(Integer, nullable=False)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+
+
+class Workflow(Base):
+    __tablename__ = "workflows"
+    id = Column(Integer, primary_key=True)
+    poc_id = Column(Integer, ForeignKey("poc.id"), nullable=False)
+    name = Column(String(100), nullable=False)
+    system_prompt_id = Column(Integer, ForeignKey("system_prompts.id"), nullable=True)
+    status = Column(SmallInteger, nullable=False, default=1)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    executed_at = Column(TIMESTAMP, nullable=True)
+
+
+class WorkflowQuestion(Base):
+    __tablename__ = "workflow_questions"
+    id = Column(Integer, primary_key=True)
+    workflow_id = Column(Integer, ForeignKey("workflows.id"), nullable=False)
+    order_index = Column(Integer, nullable=False)
+    question = Column(Text, nullable=False)
+    expected_answer = Column(Text, nullable=True)
+    log_id = Column(Integer, ForeignKey("conversation_logs.id"), nullable=True)
+    status = Column(SmallInteger, nullable=False, default=1)

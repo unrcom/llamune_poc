@@ -185,7 +185,7 @@ export function TuningDetailPage() {
   return (
     <div className="space-y-6">
       {/* ヘッダー */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3">
         <div>
           <button onClick={() => navigate('/')} className="text-sm text-muted-foreground hover:text-foreground mb-1">
             ← チューニング対象一覧
@@ -205,12 +205,21 @@ export function TuningDetailPage() {
             <span>{poc.session_count} セッション</span>
           </div>
         </div>
-        <Button
-          onClick={handleStartSession}
-          disabled={!poc.model_name}
-        >
-          チャット開始
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleStartSession}
+            disabled={!poc.model_name}
+          >
+            チャット開始
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/workflow/${poc.id}`)}
+            disabled={!poc.model_name}
+          >
+            ワークフロー
+          </Button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
