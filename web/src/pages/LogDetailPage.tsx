@@ -15,6 +15,14 @@ const EVALUATION_VARIANTS: Record<number, 'default' | 'secondary' | 'destructive
   1: 'default', 2: 'secondary', 3: 'destructive'
 }
 const PRIORITY_LABELS: Record<number, string> = { 1: '高', 2: '中', 3: '低' }
+const TRAINING_ROLE_LABELS: Record<number, string> = {
+  1: 'correction（修正）',
+  2: 'reinforcement（強化）',
+  3: 'graduated（修了）',
+  4: 'negative（否定例）',
+  5: 'synthetic（合成）',
+  6: 'boundary（境界）',
+}
 const STATUS_LABELS: Record<number, string> = { 1: '未処理', 2: '訓練済み', 3: '検証済み' }
 
 export function LogDetailPage() {
@@ -32,6 +40,7 @@ export function LogDetailPage() {
   const [incorrectParts, setIncorrectParts] = useState('')
   const [missingParts, setMissingParts] = useState('')
   const [priority, setPriority] = useState('')
+  const [trainingRole, setTrainingRole] = useState('')
 
   useEffect(() => {
     async function fetchLog() {
@@ -45,6 +54,7 @@ export function LogDetailPage() {
         setIncorrectParts(res.incorrect_parts ?? '')
         setMissingParts(res.missing_parts ?? '')
         setPriority(res.priority ? String(res.priority) : '')
+        setTrainingRole(res.training_role ? String(res.training_role) : '')
         const sessionRes = await api.getSession(res.session_id)
         setSession(sessionRes)
       } catch (e) {
@@ -67,6 +77,7 @@ export function LogDetailPage() {
         incorrect_parts: incorrectParts || undefined,
         missing_parts: missingParts || undefined,
         priority: priority ? Number(priority) : undefined,
+        training_role: trainingRole ? Number(trainingRole) : undefined,
       })
       const updated = await api.getLog(Number(id))
       setLog(updated)
@@ -179,6 +190,20 @@ export function LogDetailPage() {
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>トレーニングロール</Label>
+          <Select value={trainingRole} onValueChange={setTrainingRole}>
+            <SelectTrigger>
+              <SelectValue placeholder="トレーニングロールを選択（任意）" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(TRAINING_ROLE_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">

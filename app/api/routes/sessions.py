@@ -31,9 +31,11 @@ def create_session(
     if not latest_prompt:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="システムプロンプトが設定されていません。チューニング詳細画面から登録してください。")
 
-    # 既存セッションがあればそれを使う（poc_idごとに1セッション）
+    # 同じpoC・同じシステムプロンプト・未終了のセッションがあれば再利用
     existing_session = db.query(SessionModel).filter(
-        SessionModel.poc_id == poc.id
+        SessionModel.poc_id == poc.id,
+        SessionModel.ended_at.is_(None),
+        SessionModel.system_prompt_id == latest_prompt.id,
     ).first()
     if existing_session:
         session = existing_session

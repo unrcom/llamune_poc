@@ -82,9 +82,19 @@ export function ChatPage() {
     fetchInitial()
   }, [sessionIdParam])
 
+  // sessionIdParamがあるがstateがない場合（リロード時）はセッション情報を取得
+  const [resolvedAppName, setResolvedAppName] = useState(app_name)
+  const [resolvedPocId, setResolvedPocId] = useState<number | undefined>(poc_id)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [logs, streamingAnswer])
+    if (sessionIdParam && !state?.app_name) {
+      api.getSession(Number(sessionIdParam)).then((session) => {
+        setResolvedAppName(session.app_name)
+        setResolvedPocId(session.poc_id)
+      }).catch(() => {})
+    }
+  }, [sessionIdParam, state?.app_name])
+
+  // 自動スクロール無効
 
   async function refreshLogs(sid?: number) {
     const id = sid ?? sessionId
@@ -117,7 +127,9 @@ export function ChatPage() {
       await refreshLogs(currentSessionId)
       setStreamingAnswer('')
     } catch (e) {
-      setError(e instanceof Error ? e.message : '送信に失敗しました')
+      const msg = e instanceof Error ? e.message : '送信に失敗しました'
+      console.error('handleSend error:', msg)
+      setError(msg)
       setStreamingAnswer('')
     } finally {
       setSending(false)
@@ -202,6 +214,7 @@ export function ChatPage() {
       </div>
 
       <div className="sticky top-0 bg-background pb-2 space-y-2 z-10">
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <Textarea
           placeholder="質問を入力（Cmd+Enter で送信）"
           value={question}
@@ -392,7 +405,6 @@ export function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   )
 }
