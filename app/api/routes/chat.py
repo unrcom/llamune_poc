@@ -44,6 +44,7 @@ def post_chat(
             system_prompt=session.system_prompt,
             question=chat_in.question,
             session_id=session.id,
+            adapter_path=model.adapter_path,
         ):
             tokens.append(token)
             yield token
