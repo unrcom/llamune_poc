@@ -28,6 +28,7 @@ class Model(Base):
     model_name = Column(String(100), nullable=False)
     version = Column(Integer, nullable=False, server_default=sa.text("1"), default=1)
     base_model = Column(String(100))
+    adapter_path = Column(String(500), nullable=True)
     trained_at = Column(TIMESTAMP)
     description = Column(Text)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
