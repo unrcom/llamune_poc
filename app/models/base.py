@@ -29,6 +29,7 @@ class Model(Base):
     version = Column(Integer, nullable=False, server_default=sa.text("1"), default=1)
     base_model = Column(String(100))
     adapter_path = Column(String(500), nullable=True)
+    parent_model_id = Column(Integer, ForeignKey("models.id"), nullable=True)
     trained_at = Column(TIMESTAMP)
     description = Column(Text)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
