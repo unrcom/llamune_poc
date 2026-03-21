@@ -5,11 +5,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import users, models, sessions, chat, logs, pocs, auth, datasets, system_prompts, workflows
+from app.core.config import INSTANCE_ID, DISPLAY_NAME, SELF_URL
 
 MONKEY_URL = os.getenv("MONKEY_URL", "")
-INSTANCE_ID = os.getenv("INSTANCE_ID", "unnamed")
-INSTANCE_DESCRIPTION = os.getenv("INSTANCE_DESCRIPTION", INSTANCE_ID)
-SELF_URL = os.getenv("SELF_URL", "http://localhost:8000")
 INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "")
 HEARTBEAT_INTERVAL = int(os.getenv("HEARTBEAT_INTERVAL", "30"))
 
@@ -43,7 +41,7 @@ async def _register(client: httpx.AsyncClient) -> bool:
             json={
                 "instance_id": INSTANCE_ID,
                 "url": SELF_URL,
-                "description": INSTANCE_DESCRIPTION,
+                "description": DISPLAY_NAME,
                 "allowed_apps": allowed_apps,
             },
             headers={"X-Internal-Token": INTERNAL_TOKEN},

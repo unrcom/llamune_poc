@@ -7,10 +7,9 @@ import httpx
 from enum import Enum
 from datetime import datetime, timezone
 from typing import Optional
+from app.core.config import INSTANCE_ID
 
 MONKEY_URL = os.getenv("MONKEY_URL", "")
-INSTANCE_ID = os.getenv("INSTANCE_ID", "unnamed")
-INSTANCE_DESCRIPTION = os.getenv("INSTANCE_DESCRIPTION", INSTANCE_ID)
 INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "")
 
 
