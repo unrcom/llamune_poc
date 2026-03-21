@@ -53,7 +53,7 @@ export function Layout({ children, onLogout }: LayoutProps) {
                       title={`${inst.instance_id}${appNames ? ` [${appNames}]` : ''}`}
                       className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 ${statusColor}`}
                     >
-                      {inst.instance_id.replace('llamune-poc-', 'p-')}: {statusLabel}
+                      {inst.display_name}: {statusLabel}
                       {inst.healthy && inst.queue_size > 0 && ` Q:${inst.queue_size}`}
                       {inst.healthy && inst.active_request && ` [${inst.active_request.session_id}]`}
                     </span>
